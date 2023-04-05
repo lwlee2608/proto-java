@@ -20,7 +20,7 @@ A .proto file will be generated.
 ```protobuf
 syntax = "proto3";
 
-option java_package = "io.github.lwlee2608.proto.plugin.pojo";
+option java_package = "io.github.lwlee2608.proto.annotation";
 package testing.pojo;
 
 message Example {
