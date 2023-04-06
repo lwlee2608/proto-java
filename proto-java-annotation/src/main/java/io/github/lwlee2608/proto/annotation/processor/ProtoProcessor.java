@@ -3,6 +3,7 @@ package io.github.lwlee2608.proto.annotation.processor;
 import com.google.auto.service.AutoService;
 import io.github.lwlee2608.proto.annotation.ProtoField;
 import io.github.lwlee2608.proto.annotation.ProtoMessage;
+import io.github.lwlee2608.proto.annotation.ProtoService;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Processor;
@@ -12,6 +13,7 @@ import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
@@ -21,14 +23,21 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-@SupportedAnnotationTypes({"io.github.lwlee2608.proto.annotation.ProtoMessage", "io.github.lwlee2608.proto.annotation.ProtoField"})
+@SupportedAnnotationTypes({
+        "io.github.lwlee2608.proto.annotation.ProtoMessage",
+        "io.github.lwlee2608.proto.annotation.ProtoField",
+        "io.github.lwlee2608.proto.annotation.ProtoService",
+        "io.github.lwlee2608.proto.annotation.ProtoMethod"})
 @SupportedSourceVersion(SourceVersion.RELEASE_11)
 @AutoService(Processor.class)
 public class ProtoProcessor extends AbstractProcessor {
 
     private static final Map<String, ProtoFile> protoFiles = new HashMap<>();
     private static final Map<String, Message> messages = new HashMap<>();
+    private static final Map<String, Service> services = new HashMap<>();
     private static Boolean written = false;
 
     @Override
@@ -45,7 +54,7 @@ public class ProtoProcessor extends AbstractProcessor {
                     String protoPackage = typeElement.getAnnotation(ProtoMessage.class).protoPackage();
                     String protoName = typeElement.getAnnotation(ProtoMessage.class).protoName();
 
-                    Message message = messages.computeIfAbsent(fullClassName, key -> new Message().setFullClassName(className));
+                    Message message = messages.computeIfAbsent(fullClassName, key -> new Message().setFullClassName(fullClassName));
                     message.setClassName(className);
                     message.setPackageName(packageName);
 
@@ -53,6 +62,8 @@ public class ProtoProcessor extends AbstractProcessor {
                     protoFile.setPackageName(packageName);
                     protoFile.setProtoPackage(protoPackage);
                     protoFile.addMessage(message);
+
+//                    System.out.println("Message is " + message);
 
                 } else if (element.getKind() == ElementKind.FIELD) {
                     TypeElement classElement = (TypeElement) element.getEnclosingElement();
@@ -68,15 +79,70 @@ public class ProtoProcessor extends AbstractProcessor {
                             .setJavaType(javaType)
                             .setProtoType(protoType)
                             .setTag(tag));
+
+//                    System.out.println("Field is " + fieldName);
+
+                } else if (element.getKind() == ElementKind.INTERFACE) {
+                    TypeElement typeElement = (TypeElement) element;
+                    String protoPackage = typeElement.getAnnotation(ProtoService.class).protoPackage();
+                    String protoName = typeElement.getAnnotation(ProtoService.class).protoName();
+                    String fullServiceName = element.asType().toString();
+                    String serviceName = getSimpleClass(fullServiceName);
+
+                    Service service = services.computeIfAbsent(fullServiceName, key -> new Service().setFullServiceName(fullServiceName));
+                    service.setServiceName(serviceName);
+
+                    ProtoFile protoFile = protoFiles.computeIfAbsent(protoName, key -> new ProtoFile().setFileName(protoName + ".proto"));
+                    protoFile.addService(service);
+
+
+                } else if (element.getKind() == ElementKind.METHOD) {
+                    // String name = element.asType().toString();
+                    ExecutableElement methodElement = (ExecutableElement) element;
+                    String methodName = methodElement.getSimpleName().toString();
+
+                    Method method = new Method();
+                    method.setMethodName(methodName);
+
+                    // must be void
+                    String returnType = methodElement.getReturnType().toString();
+                    if (!"void".equals(returnType)) {
+                        throw new RuntimeException("Return type of a ProtoMethod must be void");
+                    }
+
+                    if (methodElement.getParameters().size() != 2) {
+                        throw new RuntimeException("Invalid parameters ");
+                    }
+
+                    String arg0 = methodElement.getParameters().get(0).asType().toString();
+                    String arg1 = methodElement.getParameters().get(1).asType().toString();
+
+                    // Extract Output Type
+                    Pattern pattern = Pattern.compile("io.grpc.stub.StreamObserver<(.*?)>");
+                    Matcher matcher = pattern.matcher(arg1);
+                    if (!matcher.find()) {
+                        throw new RuntimeException("Output argument format not supported");
+                    }
+                    String inputName = arg0;
+                    String outputName = matcher.group(1);
+                    Message inputType = messages.computeIfAbsent(inputName, key -> new Message().setFullClassName(inputName));
+                    Message outputType = messages.computeIfAbsent(outputName, key -> new Message().setFullClassName(outputName));
+                    method.setInputType(inputType);
+                    method.setOutputType(outputType);
+
+                    TypeElement serviceElement = (TypeElement) element.getEnclosingElement();
+                    String fullServiceName = serviceElement.getQualifiedName().toString();
+                    Service service = services.computeIfAbsent(fullServiceName, key -> new Service().setFullServiceName(fullServiceName));
+                    service.addMethod(method);
                 }
             }
         }
 
         if (!written) {
-            written = true;
-            for (Map.Entry<String, ProtoFile> entry : protoFiles.entrySet()) {
-                try {
-                    writeProtoFile(entry.getValue());
+        written = true;
+        for (Map.Entry<String, ProtoFile> entry : protoFiles.entrySet()) {
+            try {
+                writeProtoFile(entry.getValue());
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -107,6 +173,17 @@ public class ProtoProcessor extends AbstractProcessor {
                 out.println("message " + className + " {");
                 for (Field field : message.getFields()) {
                     out.println(String.format("    %s %s = %d;", field.getProtoType(), field.getName(), field.getTag()));
+                }
+                out.println("}");
+                out.println("");
+            }
+            for (Service service : protoFile.getServices()) {
+                out.println("service " + service.getServiceName() + " {");
+                for (Method method: service.getMethods()) {
+                    out.println(String.format("    rpc %s (%s) returns (%s);",
+                            method.getMethodName(),
+                            method.getInputType().getClassName(),
+                            method.getInputType().getClassName()));
                 }
                 out.println("}");
                 out.println("");

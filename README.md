@@ -2,29 +2,58 @@
 Additional features for Protobuf Java
 
 ## proto-java-annotation
-Convert Java POJO to [Protocol Buffer files](https://protobuf.dev/overview/)
+This module automatically converts Java POJOs and interfaces to [Protocol Buffer files](https://protobuf.dev/overview/) during 
+compile time, without requiring any plugins or explicit invocation. 
 
 ### Examples:
-Simply add `@ProtoMessage` and `@ProtoField` annotation to a POJO.
+Simply add custom annotation `@ProtoMessage` and `@ProtoField` annotation to the POJO.
+
 ```java
-@ProtoMessage(protoName = "pojo", protoPackage = "testing.pojo")
-public class Example {
+@ProtoMessage(protoName = "helloworld", protoPackage = "example.helloworld")
+public class HelloReply {
     @ProtoField(tag = 1)
-    private String foo;
-    @ProtoField(tag = 2)
-    private String bar;
+    private String name;
 }
 ```
 
-A .proto file will be generated.
+```java
+@ProtoMessage(protoName = "helloworld", protoPackage = "example.helloworld")
+public class HelloRequest {
+    @ProtoField(tag = 1)
+    private String message;
+    @ProtoField(tag = 2)
+    private Integer id;
+}
+```
+
+And add custom annotation `@ProtoService` and `@ProtoMethod` annotation to an interface.
+```java
+@ProtoService(protoName = "helloworld", protoPackage = "example.helloworld")
+public interface Greeter {
+    @ProtoMethod
+    void sayHello(HelloRequest request, StreamObserver<HelloReply> responseObserver);
+}
+```
+
+A .proto file will be generated in  `target/classes` or `target/test-classes`
 ```protobuf
 syntax = "proto3";
 
-option java_package = "io.github.lwlee2608.proto.annotation";
-package testing.pojo;
+import "google/protobuf/wrappers.proto";
+option java_package = "io.github.lwlee2608.proto.annotation.example.helloworld";
 
-message Example {
-  string foo = 1;
-  string bar = 2;
+package example.helloworld;
+
+message HelloRequest {
+  string message = 1;
+  int32 id = 2;
+}
+
+message HelloReply {
+  string name = 1;
+}
+
+service Greeter {
+  rpc sayHello (HelloRequest) returns (HelloRequest);
 }
 ```

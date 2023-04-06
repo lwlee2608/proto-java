@@ -16,9 +16,15 @@ public class ProtoFile {
     private String packageName;
     private String protoPackage;
     private List<Message> messages = new ArrayList<>();
+    private List<Service> services = new ArrayList<>();
 
     public ProtoFile addMessage(Message message) {
         messages.add(message);
+        return this;
+    }
+
+    public ProtoFile addService(Service service) {
+        services.add(service);
         return this;
     }
 }
