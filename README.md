@@ -1,6 +1,10 @@
 # proto-java
 Additional features for Protobuf Java
 
+### modules:
+* proto-java-annotation
+* proto-java-default-gen
+
 ## proto-java-annotation
 This module automatically converts Java POJOs and interfaces to [Protocol Buffer files](https://protobuf.dev/overview/) during 
 compile time, without requiring any plugins or explicit invocation. 
@@ -36,24 +40,9 @@ public interface Greeter {
 ```
 
 A .proto file will be generated in  `target/classes` or `target/test-classes`
-```protobuf
-syntax = "proto3";
 
-import "google/protobuf/wrappers.proto";
-option java_package = "io.github.lwlee2608.proto.annotation.example.helloworld";
+## proto-java-default-gen (WIP)
+If `protoc` binary is already available in the `PATH`.
+This module will automatically generate a default implementation of an interface annotated with `@ProtoService` 
+without any plugins or explicit invocation.
 
-package example.helloworld;
-
-message HelloRequest {
-  string message = 1;
-  int32 id = 2;
-}
-
-message HelloReply {
-  string name = 1;
-}
-
-service Greeter {
-  rpc sayHello (HelloRequest) returns (HelloRequest);
-}
-```
