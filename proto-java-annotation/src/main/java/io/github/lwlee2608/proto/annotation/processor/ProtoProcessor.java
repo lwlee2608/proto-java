@@ -4,6 +4,9 @@ import com.google.auto.service.AutoService;
 import io.github.lwlee2608.proto.annotation.ProtoField;
 import io.github.lwlee2608.proto.annotation.ProtoMessage;
 import io.github.lwlee2608.proto.annotation.ProtoService;
+import io.github.lwlee2608.proto.gen.ClassFinder;
+import io.github.lwlee2608.proto.gen.ProtoGen;
+import lombok.SneakyThrows;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Processor;
@@ -17,8 +20,11 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,6 +46,7 @@ public class ProtoProcessor extends AbstractProcessor {
     private static final Map<String, Service> services = new HashMap<>();
     private static Boolean written = false;
 
+    @SneakyThrows
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnvironment) {
 
@@ -53,12 +60,14 @@ public class ProtoProcessor extends AbstractProcessor {
                     String packageName = getPackage(fullClassName);
                     String protoPackage = typeElement.getAnnotation(ProtoMessage.class).protoPackage();
                     String protoName = typeElement.getAnnotation(ProtoMessage.class).protoName();
+                    String outerClassName = getOuterClassName(protoName);
 
                     Message message = messages.computeIfAbsent(fullClassName, key -> new Message().setFullClassName(fullClassName));
                     message.setClassName(className);
                     message.setPackageName(packageName);
 
                     ProtoFile protoFile = protoFiles.computeIfAbsent(protoName, key -> new ProtoFile().setFileName(protoName + ".proto"));
+                    protoFile.setOuterClassName(outerClassName);
                     protoFile.setPackageName(packageName);
                     protoFile.setProtoPackage(protoPackage);
                     protoFile.addMessage(message);
@@ -88,11 +97,13 @@ public class ProtoProcessor extends AbstractProcessor {
                     String protoName = typeElement.getAnnotation(ProtoService.class).protoName();
                     String fullServiceName = element.asType().toString();
                     String serviceName = getSimpleClass(fullServiceName);
+                    String outerClassName = getOuterClassName(protoName);
 
                     Service service = services.computeIfAbsent(fullServiceName, key -> new Service().setFullServiceName(fullServiceName));
                     service.setServiceName(serviceName);
 
                     ProtoFile protoFile = protoFiles.computeIfAbsent(protoName, key -> new ProtoFile().setFileName(protoName + ".proto"));
+                    protoFile.setOuterClassName(outerClassName);
                     protoFile.addService(service);
 
 
@@ -139,20 +150,24 @@ public class ProtoProcessor extends AbstractProcessor {
         }
 
         if (!written) {
-        written = true;
-        for (Map.Entry<String, ProtoFile> entry : protoFiles.entrySet()) {
-            try {
-                writeProtoFile(entry.getValue());
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+            written = true;
+            for (Map.Entry<String, ProtoFile> entry : protoFiles.entrySet()) {
+                ProtoFile protoFile = entry.getValue();
+                File generatedProfoFile = writeProtoFile(protoFile);
+                protoFile.setGeneratedFile(generatedProfoFile);
+            }
+
+            Class<ProtoGen> clazz = ClassFinder.findClass(ProtoGen.class, "io.github.lwlee2608.proto.gen");
+            if (!clazz.isInterface()) {
+                ProtoGen gen = clazz.getDeclaredConstructor().newInstance();
+                gen.generate(processingEnv.getFiler(), new ArrayList<>(protoFiles.values()));
             }
         }
 
         return true;
     }
 
-    private void writeProtoFile(ProtoFile protoFile) throws IOException {
+    private File writeProtoFile(ProtoFile protoFile) throws IOException {
         String fileName = protoFile.getFileName();
         String packageName = protoFile.getPackageName();
         String protoPackage = protoFile.getProtoPackage();
@@ -189,6 +204,8 @@ public class ProtoProcessor extends AbstractProcessor {
                 out.println("");
             }
         }
+
+        return Paths.get(resourceFile.toUri()).toFile();
     }
 
     private String getPackage(String fullyQualifiedClassName) {
@@ -199,6 +216,10 @@ public class ProtoProcessor extends AbstractProcessor {
     private String getSimpleClass(String fullyQualifiedClassName) {
         String[] split = fullyQualifiedClassName.split("\\.");
         return split[split.length - 1];
+    }
+
+    private String getOuterClassName(String protoName) {
+        return protoName.substring(0, 1).toUpperCase() + protoName.substring(1);
     }
 
     private String toProtoType(String javaType) {
