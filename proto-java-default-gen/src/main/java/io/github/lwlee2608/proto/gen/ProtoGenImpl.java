@@ -9,8 +9,10 @@ import javax.annotation.processing.Filer;
 import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
+import java.io.File;
 import java.io.PrintWriter;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 
 public class ProtoGenImpl implements ProtoGen {
@@ -43,10 +45,13 @@ public class ProtoGenImpl implements ProtoGen {
         FileObject resource = filer.getResource(StandardLocation.SOURCE_OUTPUT, "", "Dummy.java");
         String outputDirectory = Paths.get(resource.toUri()).toFile().getParent();
 
+        // Retrieve the protoc executable
+        System.out.println("test: "+System.getProperty("project.build.directory"));
+
         // Generate using protoc
         String protoPath = protoFiles.get(0).getGeneratedFile().getParent();
         // Temp hardcoded Path
-        String executable = System.getProperty("user.dir") + "/examples/target/protoc-binary/" + "protoc";
+        String executable = System.getProperty("user.dir") + "/examples/target/protoc/bin/" + "protoc";
         String[] args = new String[]{
                 "-I=.",
                 "--java_out=" + outputDirectory,

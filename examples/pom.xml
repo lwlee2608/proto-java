@@ -10,10 +10,6 @@
 
     <artifactId>examples</artifactId>
 
-    <properties>
-        <protoc.binary.dir>${project.build.directory}/protoc-binary</protoc.binary.dir>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>io.github.lwlee2608</groupId>
@@ -36,80 +32,21 @@
             <artifactId>grpc-protobuf</artifactId>
             <version>${grpc.version}</version>
         </dependency>
-        <!-- protoc binary -->
-        <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protoc</artifactId>
-            <version>${protobuf.version}</version>
-            <type>exe</type>
-            <classifier>${os.detected.classifier}</classifier>
-            <scope>provided</scope>
-        </dependency>
     </dependencies>
 
     <build>
-        <extensions>
-            <extension>
-                <groupId>kr.motd.maven</groupId>
-                <artifactId>os-maven-plugin</artifactId>
-                <version>1.6.1</version>
-            </extension>
-        </extensions>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <version>${apache.maven.version}</version>
+                <groupId>io.github.lwlee2608</groupId>
+                <artifactId>proto-java-plugin</artifactId>
+                <version>${project.version}</version>
                 <executions>
                     <execution>
-                        <id>unpack-protoc-binary</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <includeGroupIds>com.google.protobuf</includeGroupIds>
-                            <includeArtifactIds>protoc</includeArtifactIds>
-                            <includeTypes>exe</includeTypes>
-                            <outputDirectory>${protoc.binary.dir}</outputDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>${codehaus.maven.version}</version>
-                <executions>
-                    <execution>
-                        <id>rename-protoc-binary</id>
+                        <id>download-protoc-binary</id>
                         <phase>process-sources</phase>
                         <goals>
-                            <goal>exec</goal>
+                            <goal>download</goal>
                         </goals>
-                        <configuration>
-                            <executable>bash</executable>
-                            <workingDirectory>${protoc.binary.dir}</workingDirectory>
-                            <arguments>
-                                <argument>-c</argument>
-                                <argument>mv "$(find . -name '*exe' | head -1)" protoc</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>make-executable-protoc-binary</id>
-                        <phase>process-sources</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>bash</executable>
-                            <workingDirectory>${protoc.binary.dir}</workingDirectory>
-                            <arguments>
-                                <argument>-c</argument>
-                                <argument>chmod +x protoc</argument>
-                            </arguments>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
