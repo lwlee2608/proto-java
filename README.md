@@ -1,28 +1,15 @@
 # proto-java
 
-### Motivation
-While gRPC is an excellent Remote Procedure Call technology for transferring information between different applications
-written in different programming languages, the out-of-the-box java-grpc implementation is not the most user-friendly.
-Many of its design choices conflict with the ways in which many people write Java code today.
-
-This project aims to address some of gRPC's shortcomings, including:
-1. non-nullable fields
-2. non-nullable enum
-3. not Kotlin friendly
-4. lack of RxJava support
-5. require convoluted maven-plugins configuration
- 
-### Design Choices
-To address these shortcomings, we take a more Java-centric approach. Rather than defining the protocol buffer 
-specification in a .proto file, we define it in a Java file using annotations.
+### Introduction
+This project offers an alternative way of working with gRPC in Java. Rather than defining the [Protocol Buffer files](https://protobuf.dev/overview/)
+specification in a .proto file, we can now define it in Java using annotations.
 
 ### Modules
 * proto-java-annotation
 * proto-java-default-gen
 
 ## proto-java-annotation
-This module automatically converts Java POJOs and interfaces to [Protocol Buffer files](https://protobuf.dev/overview/) during 
-compile time, without requiring any plugins or explicit invocation. 
+This module automatically converts Java POJOs and interfaces to .proto files during time.
 
 ### Examples
 Simply add custom annotation `@ProtoMessage` and `@ProtoField` annotation to the POJO.
@@ -56,8 +43,34 @@ public interface Greeter {
 
 A .proto file will be generated in  `target/classes` or `target/test-classes`
 
-## proto-java-default-gen (WIP)
-If `protoc` binary is already available in the `PATH`.
-This module will automatically generate a default implementation of an interface annotated with `@ProtoService` 
-without any plugins or explicit invocation.
+## proto-java-default-gen
+If `protoc` binary is already available in the `PATH`. This module will automatically generate a default implementation of an interface annotated with `@ProtoService` 
 
+### How to apply
+Simply add the module as dependency
+```xml
+    <dependency>
+        <groupId>io.github.lwlee2608</groupId>
+        <artifactId>pojo-to-proto-gen</artifactId>
+    </dependency>
+```
+
+### Example Server
+```java
+    Server server = ServerBuilder
+        .forPort(8080)
+        .addService(new HelloworldProto.GreeterService.GreeterServerImpl(new Greeter() {
+            @Override
+            public void sayHello(HelloRequest request, StreamObserver<HelloReply> responseObserver) {
+                responseObserver.onNext(new HelloReply().setName(request.getMessage() + " World"));
+                responseObserver.onCompleted();
+            }
+        }))
+        .build();
+```
+
+### Example Client
+```java
+    Greeter client = new HelloworldProto.GreeterService.GreeterClientImpl(channel, CallOptions.DEFAULT);
+    client.sayHello(new HelloRequest().setMessage("Hello").setId(1), responseObserver);
+```
