@@ -82,6 +82,7 @@ public class ProtoGenImpl implements ProtoGen {
             reader.close();
             process.destroy();
         } catch (Exception ignored) {}
+        System.out.println("Is protoc available in PATH : " + isExecutableAvailable);
         return isExecutableAvailable;
     }
 }
