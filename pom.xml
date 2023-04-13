@@ -44,6 +44,9 @@
         <maven.dependency.plugin.version>2.10</maven.dependency.plugin.version>
         <maven.deploy.plugin.version>2.8.2</maven.deploy.plugin.version>
         <maven.dependency.versions.check.plugin.version>2.0.2</maven.dependency.versions.check.plugin.version>
+        <protobuf.version>3.4.0</protobuf.version>
+        <apache.maven.version>3.2.0</apache.maven.version>
+        <codehaus.maven.version>3.0.0</codehaus.maven.version>
     </properties>
 
     <modules>

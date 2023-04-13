@@ -1,4 +1,5 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -9,6 +10,10 @@
 
     <artifactId>examples</artifactId>
 
+    <properties>
+        <protoc.binary.dir>${project.build.directory}/protoc-binary</protoc.binary.dir>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.github.lwlee2608</groupId>
@@ -16,11 +21,11 @@
             <version>${project.version}</version>
         </dependency>
         <!--Binary 'protoc' must be avaiable in $PATH -->
-        <!--dependency>
+        <dependency>
             <groupId>io.github.lwlee2608</groupId>
             <artifactId>proto-java-default-gen</artifactId>
             <version>${project.version}</version>
-        </dependency-->
+        </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-stub</artifactId>
@@ -31,10 +36,83 @@
             <artifactId>grpc-protobuf</artifactId>
             <version>${grpc.version}</version>
         </dependency>
+        <!-- protoc binary -->
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protoc</artifactId>
+            <version>${protobuf.version}</version>
+            <type>exe</type>
+            <classifier>${os.detected.classifier}</classifier>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
+        <extensions>
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>1.6.1</version>
+            </extension>
+        </extensions>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>${apache.maven.version}</version>
+                <executions>
+                    <execution>
+                        <id>unpack-protoc-binary</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <includeGroupIds>com.google.protobuf</includeGroupIds>
+                            <includeArtifactIds>protoc</includeArtifactIds>
+                            <includeTypes>exe</includeTypes>
+                            <outputDirectory>${protoc.binary.dir}</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>${codehaus.maven.version}</version>
+                <executions>
+                    <execution>
+                        <id>rename-protoc-binary</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>bash</executable>
+                            <workingDirectory>${protoc.binary.dir}</workingDirectory>
+                            <arguments>
+                                <argument>-c</argument>
+                                <argument>mv "$(find . -name '*exe' | head -1)" protoc</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>make-executable-protoc-binary</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>bash</executable>
+                            <workingDirectory>${protoc.binary.dir}</workingDirectory>
+                            <arguments>
+                                <argument>-c</argument>
+                                <argument>chmod +x protoc</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>

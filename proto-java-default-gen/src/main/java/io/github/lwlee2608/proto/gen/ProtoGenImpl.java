@@ -45,7 +45,8 @@ public class ProtoGenImpl implements ProtoGen {
 
         // Generate using protoc
         String protoPath = protoFiles.get(0).getGeneratedFile().getParent();
-        String executable = "protoc";
+        // Temp hardcoded Path
+        String executable = System.getProperty("user.dir") + "/examples/target/protoc-binary/" + "protoc";
         String[] args = new String[]{
                 "-I=.",
                 "--java_out=" + outputDirectory,
