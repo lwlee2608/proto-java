@@ -176,8 +176,8 @@ public class ProtoProcessor extends AbstractProcessor {
 
         try (PrintWriter out = new PrintWriter(resourceFile.openWriter())) {
             out.println("syntax = \"proto3\";");
-            out.println("");
-            out.println("import \"google/protobuf/wrappers.proto\";");
+            //out.println("");
+            //out.println("import \"google/protobuf/wrappers.proto\";");
             out.println("");
             out.println("option java_package = \"" + packageName + "\";");
             out.println("");
