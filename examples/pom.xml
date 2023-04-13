@@ -16,7 +16,6 @@
             <artifactId>proto-java-annotation</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!--Binary 'protoc' must be avaiable in $PATH -->
         <dependency>
             <groupId>io.github.lwlee2608</groupId>
             <artifactId>proto-java-default-gen</artifactId>
