@@ -18,6 +18,15 @@ import java.util.Set;
 
 @Mojo(name = "download")
 public class DownloadMojo extends AbstractMojo {
+
+    @Parameter(
+            name = "mavenRepoUrl",
+            property = "maven.repo.url",
+            defaultValue = "https://repo1.maven.org/maven2"
+    )
+    // Alternative mirrors: https://repo1.maven.org/maven2, https://repo.maven.apache.org/maven2
+    private String mavenRepoUrl;
+
     @Parameter(
             name = "outputDirectory",
             property = "output.dir",
@@ -48,7 +57,7 @@ public class DownloadMojo extends AbstractMojo {
         }
 
         // Download Binary
-        String downloadUrl = "https://repo1.maven.org/maven2/com/google/protobuf/protoc/" + protocVersion + "/protoc-" + protocVersion + "-" + os + ".exe";
+        String downloadUrl = mavenRepoUrl + "/com/google/protobuf/protoc/" + protocVersion + "/protoc-" + protocVersion + "-" + os + ".exe";
         getLog().info("Starting download protoc binary from " + downloadUrl);
 
         Path targetProtocBinary = Paths.get(outputDirectory.getAbsolutePath() + "/bin/protoc.exe");
