@@ -60,10 +60,7 @@ public class DownloadMojo extends AbstractMojo {
             throw new RuntimeException(e);
         }
 
-        if (operationSystem != PlatformIdentifier.OperationSystem.WINDOWS) {
-            // Make binary executable
-            setExecutable(targetProtocBinary);
-        }
+        setExecutable(targetProtocBinary);
 
         getLog().info("Proto Java plugin completed");
     }
@@ -108,6 +105,10 @@ public class DownloadMojo extends AbstractMojo {
 
     private void setExecutable(Path path) {
         // Make binary executable
+        if (operationSystem == PlatformIdentifier.OperationSystem.WINDOWS) {
+            return;
+        }
+
         try {
             Set<PosixFilePermission> filePermissions = Files.getPosixFilePermissions(path);
             filePermissions.add(PosixFilePermission.OWNER_EXECUTE);
