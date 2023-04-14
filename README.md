@@ -12,17 +12,6 @@ specification in a .proto file, we can now define it in Java using annotations.
 ## proto-java-annotation
 This module automatically converts Java POJOs and interfaces to .proto files during time.
 
-### Supported Method
-| Asynchronous Type | Project  | Support            |
-|-------------------|:---------|--------------------|
-| StreamObserver    | io.grpc  | :heavy_check_mark: |
-| CompletableFuture | JDK      | :heavy_check_mark: |
-| Future            | Vert.x   | :x:                |
-| Single            | RxJava   | :x:                |
-| Observable        | RxJava   | :x:                |
-| Uni               | SmallRye | :x:                |
-| Multi             | SmallRye | :x:                |
-
 ### Examples
 Simply add custom annotation `@ProtoMessage` and `@ProtoField` annotation to the POJO.
 
@@ -50,6 +39,17 @@ public interface Greeter {
 ```
 
 A .proto file will be generated in  `target/classes` or `target/test-classes`
+
+### Supported Method
+| Asynchronous Type | Project  | Supported          |
+|-------------------|:---------|--------------------|
+| StreamObserver    | io.grpc  | :heavy_check_mark: |
+| CompletableFuture | JDK      | :heavy_check_mark: |
+| Future            | Vert.x   | :x:                |
+| Single            | RxJava   | :x:                |
+| Observable        | RxJava   | :x:                |
+| Uni               | SmallRye | :x:                |
+| Multi             | SmallRye | :x:                |
 
 
 ## proto-java-default-gen
