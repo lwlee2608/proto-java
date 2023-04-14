@@ -9,6 +9,8 @@ import javax.annotation.processing.Filer;
 import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.nio.file.Paths;
 import java.util.List;
@@ -43,9 +45,11 @@ public class ProtoGenImpl implements ProtoGen {
         FileObject resource = filer.getResource(StandardLocation.SOURCE_OUTPUT, "", "Dummy.java");
         String outputDirectory = Paths.get(resource.toUri()).toFile().getParent();
 
+        // Retrieve the protoc executable
+        String executable = isProtocBinaryAvailable() ? "protoc" : outputDirectory.substring(0, outputDirectory.indexOf("target")) + "target/protoc/bin/" + "protoc";
+
         // Generate using protoc
         String protoPath = protoFiles.get(0).getGeneratedFile().getParent();
-        String executable = "protoc";
         String[] args = new String[]{
                 "-I=.",
                 "--java_out=" + outputDirectory,
@@ -59,5 +63,26 @@ public class ProtoGenImpl implements ProtoGen {
         if (ret != 0) {
             System.err.println("Error generating code using protoc: " + error.getOutput());
         }
+    }
+
+    private boolean isProtocBinaryAvailable(){
+        String command = "which";
+        String executable = "protoc";
+        boolean isExecutableAvailable = false;
+        try {
+            Process process = Runtime.getRuntime().exec(command + " " + executable);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.contains(executable)) {
+                    isExecutableAvailable = true;
+                    break;
+                }
+            }
+            reader.close();
+            process.destroy();
+        } catch (Exception ignored) {}
+        System.out.println("Is protoc available in PATH : " + isExecutableAvailable);
+        return isExecutableAvailable;
     }
 }

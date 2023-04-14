@@ -49,6 +49,7 @@
     <modules>
         <module>proto-java-annotation</module>
         <module>proto-java-default-gen</module>
+        <module>proto-java-plugin</module>
         <module>examples</module>
     </modules>
 
