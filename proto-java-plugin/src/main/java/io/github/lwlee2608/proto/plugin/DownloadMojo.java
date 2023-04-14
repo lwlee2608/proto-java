@@ -7,15 +7,12 @@ import org.apache.maven.plugins.annotations.Parameter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 @Mojo(name = "download")
 public class DownloadMojo extends AbstractMojo {
@@ -43,12 +40,10 @@ public class DownloadMojo extends AbstractMojo {
     public void execute() {
         getLog().info("Starting download protoc binary");
         // Download Binary
-//        String downloadUrl = "https://github.com/protocolbuffers/protobuf/releases/download/v" + protocVersion + "/protoc-" + protocVersion + "-" + os + ".zip";
         String downloadUrl = "https://repo1.maven.org/maven2/com/google/protobuf/protoc/" + protocVersion + "/protoc-" + protocVersion + "-" + os + ".exe";
 
         try {
-//            downloadAndUnzip(downloadUrl, outputDirectory.getAbsolutePath());
-            downloadFile(downloadUrl, outputDirectory.getAbsolutePath()+"/bin/protoc");
+            downloadFile(downloadUrl, outputDirectory.getAbsolutePath() + "/bin/protoc");
         } catch (Exception e) {
             getLog().error("Fail to download protoc binary with URL: " + downloadUrl);
             getLog().error("error: " + e.getMessage());
@@ -71,33 +66,6 @@ public class DownloadMojo extends AbstractMojo {
             throw new RuntimeException(e);
         }
         getLog().info("Proto Java plugin completed");
-    }
-
-    private void downloadAndUnzip(String downloadUrl, String outputDirectory) throws Exception {
-        getLog().info("Starting download of " + downloadUrl + " to " + outputDirectory);
-        URL url = new URL(downloadUrl);
-        InputStream in = url.openStream();
-        ZipInputStream zipIn = new ZipInputStream(in);
-        ZipEntry entry = zipIn.getNextEntry();
-        while (entry != null) {
-            String filePath = outputDirectory + "/" + entry.getName();
-            if (!entry.isDirectory()) {
-                FileOutputStream out = new FileOutputStream(filePath);
-                byte[] buffer = new byte[1024];
-                int length;
-                while ((length = zipIn.read(buffer)) > 0) {
-                    out.write(buffer, 0, length);
-                }
-                out.close();
-            } else {
-                new File(filePath).mkdirs();
-            }
-            zipIn.closeEntry();
-            entry = zipIn.getNextEntry();
-        }
-        zipIn.close();
-        in.close();
-        getLog().info("Download completed");
     }
 
     private void downloadFile(String url, String destination) throws Exception {
