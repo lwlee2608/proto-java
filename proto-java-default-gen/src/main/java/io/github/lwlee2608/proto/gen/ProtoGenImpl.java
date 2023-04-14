@@ -14,8 +14,7 @@ import javax.annotation.processing.Filer;
 import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.io.File;
 import java.io.PrintWriter;
 import java.nio.file.Paths;
 import java.util.List;
@@ -51,7 +50,9 @@ public class ProtoGenImpl implements ProtoGen {
         String outputDirectory = Paths.get(resource.toUri()).toFile().getParent();
 
         // Retrieve the protoc executable
-        String executable = isProtocBinaryAvailable() ? "protoc" : outputDirectory.substring(0, outputDirectory.indexOf("target")) + "target/protoc/bin/" + "protoc";
+        String protocExecutable = outputDirectory.substring(0, outputDirectory.indexOf("target")) + "target/protoc/bin/" + "protoc";
+        File protocExeFile = new File(protocExecutable);
+        String executable = protocExeFile.exists() ? protocExecutable : "protoc";
 
         // Generate using protoc
         String protoPath = protoFiles.get(0).getGeneratedFile().getParent();
@@ -243,26 +244,5 @@ public class ProtoGenImpl implements ProtoGen {
     private String getGetter(String fieldName) {
         String name = fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
         return "get" + name;
-    }
-
-    private boolean isProtocBinaryAvailable(){
-        String command = "which";
-        String executable = "protoc";
-        boolean isExecutableAvailable = false;
-        try {
-            Process process = Runtime.getRuntime().exec(command + " " + executable);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.contains(executable)) {
-                    isExecutableAvailable = true;
-                    break;
-                }
-            }
-            reader.close();
-            process.destroy();
-        } catch (Exception ignored) {}
-        System.out.println("Is protoc available in PATH : " + isExecutableAvailable);
-        return isExecutableAvailable;
     }
 }
