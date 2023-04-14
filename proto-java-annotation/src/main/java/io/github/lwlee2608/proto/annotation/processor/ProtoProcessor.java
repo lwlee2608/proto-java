@@ -212,7 +212,7 @@ public class ProtoProcessor extends AbstractProcessor {
                     out.println(String.format("    rpc %s (%s) returns (%s);",
                             method.getMethodName(),
                             method.getInputType().getClassName(),
-                            method.getInputType().getClassName()));
+                            method.getOutputType().getClassName()));
                 }
                 out.println("}");
                 out.println("");
