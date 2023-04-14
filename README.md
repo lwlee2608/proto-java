@@ -7,6 +7,7 @@ specification in a .proto file, we can now define it in Java using annotations.
 ### Modules
 * proto-java-annotation
 * proto-java-default-gen
+* proto-java-plugin
 
 ## proto-java-annotation
 This module automatically converts Java POJOs and interfaces to .proto files during time.
@@ -40,7 +41,7 @@ public interface Greeter {
 A .proto file will be generated in  `target/classes` or `target/test-classes`
 
 ## proto-java-default-gen
-If `protoc` binary is already available in the `PATH`. This module will automatically generate a default implementation of an interface annotated with `@ProtoService` 
+If `protoc` binary is already available in the `$PATH`, this module will automatically generate a default implementation of an interface annotated with `@ProtoService` 
 
 ### How to apply
 Simply add the module as dependency
@@ -68,4 +69,28 @@ Simply add the module as dependency
 ```java
     Greeter client = new HelloworldProto.GreeterService.GreeterClientImpl(channel, CallOptions.DEFAULT);
     client.sayHelloFuture(new HelloRequest().setMessage("Hello").setId(1));
+```
+
+For more information please refer to [examples](https://github.com/lwlee2608/proto-java/blob/main/examples/src/test/java/io/github/lwlee2608/proto/example/helloworld/GreeterTest.java)
+
+## proto-java-plugin 
+If protoc binary is not available in `$PATH`, use this maven-plugin to automatically download it
+
+### How to apply
+Make sure execution phase is set to `process-sources`
+```xml
+    <plugin>
+        <groupId>io.github.lwlee2608</groupId>
+        <artifactId>proto-java-plugin</artifactId>
+        <version>${project.version}</version>
+        <executions>
+            <execution>
+                <id>download-protoc-binary</id>
+                <phase>process-sources</phase>
+                <goals>
+                    <goal>download</goal>
+                </goals>
+            </execution>
+        </executions>
+    </plugin>
 ```
