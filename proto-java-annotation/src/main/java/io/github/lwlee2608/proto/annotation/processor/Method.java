@@ -9,4 +9,5 @@ public class Method {
     private String methodName;
     private Message inputType;
     private Message outputType;
+    private AsyncType asyncType;
 }
