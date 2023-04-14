@@ -12,6 +12,17 @@ specification in a .proto file, we can now define it in Java using annotations.
 ## proto-java-annotation
 This module automatically converts Java POJOs and interfaces to .proto files during time.
 
+### Supported Method
+| Asynchronous Type | Project  | Support            |
+|-------------------|:---------|--------------------|
+| StreamObserver    | io.grpc  | :heavy_check_mark: |
+| CompletableFuture | JDK      | :heavy_check_mark: |
+| Future            | Vert.x   | :x:                |
+| Single            | RxJava   | :x:                |
+| Observable        | RxJava   | :x:                |
+| Uni               | SmallRye | :x:                |
+| Multi             | SmallRye | :x:                |
+
 ### Examples
 Simply add custom annotation `@ProtoMessage` and `@ProtoField` annotation to the POJO.
 
@@ -40,6 +51,7 @@ public interface Greeter {
 
 A .proto file will be generated in  `target/classes` or `target/test-classes`
 
+
 ## proto-java-default-gen
 If `protoc` binary is already available in the `$PATH`, this module will automatically generate a default implementation of an interface annotated with `@ProtoService` 
 
@@ -48,7 +60,8 @@ Simply add the module as dependency
 ```xml
     <dependency>
         <groupId>io.github.lwlee2608</groupId>
-        <artifactId>pojo-to-proto-gen</artifactId>
+        <artifactId>proto-java-default-gen</artifactId>
+        <version>VERSION</version>
     </dependency>
 ```
 
@@ -82,7 +95,7 @@ Make sure execution phase is set to `process-sources`
     <plugin>
         <groupId>io.github.lwlee2608</groupId>
         <artifactId>proto-java-plugin</artifactId>
-        <version>${project.version}</version>
+        <version>VERSION</version>
         <executions>
             <execution>
                 <id>download-protoc-binary</id>
