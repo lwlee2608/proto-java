@@ -31,6 +31,16 @@
             <artifactId>grpc-protobuf</artifactId>
             <version>${grpc.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.26</version>
+        </dependency>
     </dependencies>
 
     <build>

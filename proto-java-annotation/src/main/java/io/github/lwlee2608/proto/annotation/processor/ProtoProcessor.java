@@ -115,31 +115,45 @@ public class ProtoProcessor extends AbstractProcessor {
                     Method method = new Method();
                     method.setMethodName(methodName);
 
-                    // must be void
+                    // Determine Asynchronous Type
                     String returnType = methodElement.getReturnType().toString();
-                    if (!"void".equals(returnType)) {
-                        throw new RuntimeException("Return type of a ProtoMethod must be void");
-                    }
 
-                    if (methodElement.getParameters().size() != 2) {
-                        throw new RuntimeException("Invalid parameters ");
-                    }
+                    String cf = extractTemplate(returnType, "java.util.concurrent.CompletableFuture<(.*?)>");
+                    if (cf != null) {
+                        if (methodElement.getParameters().size() != 1) {
+                            throw new RuntimeException("Invalid parameters. Only one argument is allowed for CompletableFuture");
+                        }
 
-                    String arg0 = methodElement.getParameters().get(0).asType().toString();
-                    String arg1 = methodElement.getParameters().get(1).asType().toString();
+                        String inputName = methodElement.getParameters().get(0).asType().toString();
+                        String outputName = cf;
+                        Message inputType = messages.computeIfAbsent(inputName, key -> new Message().setFullClassName(inputName));
+                        Message outputType = messages.computeIfAbsent(outputName, key -> new Message().setFullClassName(outputName));
+                        method.setInputType(inputType);
+                        method.setOutputType(outputType);
+                        method.setAsyncType(AsyncType.COMPLETABLE_FUTURE);
 
-                    // Extract Output Type
-                    Pattern pattern = Pattern.compile("io.grpc.stub.StreamObserver<(.*?)>");
-                    Matcher matcher = pattern.matcher(arg1);
-                    if (!matcher.find()) {
-                        throw new RuntimeException("Output argument format not supported");
+                    } else if ("void".equals(returnType) ) {
+                        if (methodElement.getParameters().size() != 2) {
+                            throw new RuntimeException("Invalid parameters. Only two arguments are allowed for StreamObserver");
+                        }
+
+                        String inputName = methodElement.getParameters().get(0).asType().toString();
+                        String arg1 = methodElement.getParameters().get(1).asType().toString();
+
+                        // Extract Output Type
+                        String outputName = extractTemplate(arg1, "io.grpc.stub.StreamObserver<(.*?)>");
+                        if (outputName == null) {
+                            throw new RuntimeException("Output argument format not supported");
+                        }
+                        Message inputType = messages.computeIfAbsent(inputName, key -> new Message().setFullClassName(inputName));
+                        Message outputType = messages.computeIfAbsent(outputName, key -> new Message().setFullClassName(outputName));
+                        method.setInputType(inputType);
+                        method.setOutputType(outputType);
+                        method.setAsyncType(AsyncType.STREAM_OBSERVER);
+
+                    } else {
+                        throw new RuntimeException("Return type of a ProtoMethod must be void or CompletableFuture. Type '" + returnType + "' not supported");
                     }
-                    String inputName = arg0;
-                    String outputName = matcher.group(1);
-                    Message inputType = messages.computeIfAbsent(inputName, key -> new Message().setFullClassName(inputName));
-                    Message outputType = messages.computeIfAbsent(outputName, key -> new Message().setFullClassName(outputName));
-                    method.setInputType(inputType);
-                    method.setOutputType(outputType);
 
                     TypeElement serviceElement = (TypeElement) element.getEnclosingElement();
                     String fullServiceName = serviceElement.getQualifiedName().toString();
@@ -220,6 +234,16 @@ public class ProtoProcessor extends AbstractProcessor {
 
     private String getOuterClassName(String protoName) {
         return protoName.substring(0, 1).toUpperCase() + protoName.substring(1);
+    }
+
+    private String extractTemplate(String inputString, String regex) {
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(inputString);
+        if (matcher.find()) {
+            return matcher.group(1);
+        } else {
+            return null;
+        }
     }
 
     private String toProtoType(String javaType) {

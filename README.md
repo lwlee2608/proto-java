@@ -17,18 +17,15 @@ Simply add custom annotation `@ProtoMessage` and `@ProtoField` annotation to the
 ```java
 @ProtoMessage(protoName = "helloworld", protoPackage = "example.helloworld")
 public class HelloReply {
-    @ProtoField(tag = 1)
-    private String name;
+    @ProtoField(tag = 1) private String name;
 }
 ```
 
 ```java
 @ProtoMessage(protoName = "helloworld", protoPackage = "example.helloworld")
 public class HelloRequest {
-    @ProtoField(tag = 1)
-    private String message;
-    @ProtoField(tag = 2)
-    private Integer id;
+    @ProtoField(tag = 1) private String message;
+    @ProtoField(tag = 2) private Integer id;
 }
 ```
 
@@ -36,8 +33,7 @@ And add custom annotation `@ProtoService` and `@ProtoMethod` annotation to an in
 ```java
 @ProtoService(protoName = "helloworld", protoPackage = "example.helloworld")
 public interface Greeter {
-    @ProtoMethod
-    void sayHello(HelloRequest request, StreamObserver<HelloReply> responseObserver);
+    @ProtoMethod CompletableFuture<HelloReply> sayHello(HelloRequest request);
 }
 ```
 
@@ -61,9 +57,8 @@ Simply add the module as dependency
         .forPort(8080)
         .addService(new HelloworldProto.GreeterService.GreeterServerImpl(new Greeter() {
             @Override
-            public void sayHello(HelloRequest request, StreamObserver<HelloReply> responseObserver) {
-                responseObserver.onNext(new HelloReply().setName(request.getMessage() + " World"));
-                responseObserver.onCompleted();
+            public CompletableFuture<HelloReply> sayHello(HelloRequest request) {
+                return CompletableFuture.completedFuture(new HelloReply().setName(request.getMessage() + " World"));
             }
         }))
         .build();
@@ -72,5 +67,5 @@ Simply add the module as dependency
 ### Example Client
 ```java
     Greeter client = new HelloworldProto.GreeterService.GreeterClientImpl(channel, CallOptions.DEFAULT);
-    client.sayHello(new HelloRequest().setMessage("Hello").setId(1), responseObserver);
+    client.sayHelloFuture(new HelloRequest().setMessage("Hello").setId(1));
 ```
