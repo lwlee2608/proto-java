@@ -2,10 +2,10 @@ package io.github.lwlee2608.proto.example.helloworld;
 
 import io.github.lwlee2608.proto.annotation.ProtoMethod;
 import io.github.lwlee2608.proto.annotation.ProtoService;
-import io.grpc.stub.StreamObserver;
+
+import java.util.concurrent.CompletableFuture;
 
 @ProtoService(protoName = "helloworld", protoPackage = "example.helloworld")
 public interface Greeter {
-    @ProtoMethod
-    void sayHello(HelloRequest request, StreamObserver<HelloReply> responseObserver);
+    @ProtoMethod CompletableFuture<HelloReply> sayHello(HelloRequest request);
 }
