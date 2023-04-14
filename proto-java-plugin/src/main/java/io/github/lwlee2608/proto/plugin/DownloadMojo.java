@@ -9,6 +9,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -38,12 +43,15 @@ public class DownloadMojo extends AbstractMojo {
     public void execute() {
         getLog().info("Starting download protoc binary");
         // Download Binary
-        String downloadUrl = "https://github.com/protocolbuffers/protobuf/releases/download/v" + protocVersion + "/protoc-" + protocVersion + "-" + os + ".zip";
+//        String downloadUrl = "https://github.com/protocolbuffers/protobuf/releases/download/v" + protocVersion + "/protoc-" + protocVersion + "-" + os + ".zip";
+        String downloadUrl = "https://repo1.maven.org/maven2/com/google/protobuf/protoc/" + protocVersion + "/protoc-" + protocVersion + "-" + os + ".exe";
 
         try {
-            downloadAndUnzip(downloadUrl, outputDirectory.getAbsolutePath());
+//            downloadAndUnzip(downloadUrl, outputDirectory.getAbsolutePath());
+            downloadFile(downloadUrl, outputDirectory.getAbsolutePath()+"/bin/protoc");
         } catch (Exception e) {
             getLog().error("Fail to download protoc binary with URL: " + downloadUrl);
+            getLog().error("error: " + e.getMessage());
             throw new RuntimeException(e);
         }
 
@@ -90,5 +98,22 @@ public class DownloadMojo extends AbstractMojo {
         zipIn.close();
         in.close();
         getLog().info("Download completed");
+    }
+
+    private void downloadFile(String url, String destination) throws Exception {
+        URL downloadUrl = new URL(url);
+        ReadableByteChannel rbc = Channels.newChannel(downloadUrl.openStream());
+
+        // Create directory structure for output file
+        Path outputFile = Paths.get(destination);
+        Path outputDirectory = outputFile.getParent();
+        if (outputDirectory != null && !Files.exists(outputDirectory)) {
+            Files.createDirectories(outputDirectory);
+        }
+
+        FileOutputStream fos = new FileOutputStream(outputFile.toFile());
+        fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
+        fos.close();
+        rbc.close();
     }
 }
