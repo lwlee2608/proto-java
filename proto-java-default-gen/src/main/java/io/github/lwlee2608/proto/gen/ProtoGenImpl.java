@@ -48,7 +48,7 @@ public class ProtoGenImpl implements ProtoGen {
         String outputDirectory = Paths.get(resource.toUri()).toFile().getParent();
 
         // Retrieve the protoc executable
-        String protocExecutable = outputDirectory.substring(0, outputDirectory.indexOf("target")) + "target/protoc/bin/" + "protoc";
+        String protocExecutable = outputDirectory.substring(0, outputDirectory.indexOf("target")) + "target/protoc/bin/" + "protoc.exe";
         File protocExeFile = new File(protocExecutable);
         String executable = protocExeFile.exists() ? protocExecutable : "protoc";
 
