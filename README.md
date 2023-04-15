@@ -40,17 +40,6 @@ public interface Greeter {
 
 A .proto file will be generated in  `target/classes` or `target/test-classes`
 
-### Supported Method
-| Asynchronous Type | Project  | Supported          |
-|-------------------|:---------|--------------------|
-| StreamObserver    | io.grpc  | :heavy_check_mark: |
-| CompletableFuture | JDK      | :heavy_check_mark: |
-| Future            | Vert.x   | :x:                |
-| Single            | RxJava   | :x:                |
-| Observable        | RxJava   | :x:                |
-| Uni               | SmallRye | :x:                |
-| Multi             | SmallRye | :x:                |
-
 
 ## proto-java-default-gen
 If `protoc` binary is already available in the `$PATH`, this module will automatically generate a default implementation of an interface annotated with `@ProtoService` 
@@ -85,6 +74,13 @@ Simply add the module as dependency
 ```
 
 For more information please refer to [examples](https://github.com/lwlee2608/proto-java/blob/main/examples/src/test/java/io/github/lwlee2608/proto/example/helloworld/GreeterTest.java)
+
+
+### Supported Method
+| Asynchronous Type | Project  | Supported          |
+|-------------------|:---------|--------------------|
+| StreamObserver    | io.grpc  | :heavy_check_mark: |
+| CompletableFuture | JDK      | :heavy_check_mark: |
 
 ## proto-java-plugin 
 If protoc binary is not available in `$PATH`, use this maven-plugin to automatically download it
