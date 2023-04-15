@@ -1,5 +1,6 @@
 package io.github.lwlee2608.proto.gen;
 
+import io.github.lwlee2608.proto.annotation.exception.GeneratorException;
 import io.github.lwlee2608.proto.annotation.processor.AsyncType;
 import io.github.lwlee2608.proto.annotation.processor.Field;
 import io.github.lwlee2608.proto.annotation.processor.Message;
@@ -65,7 +66,7 @@ public class ProtoGenImpl implements ProtoGen {
 
         int ret = CommandLineUtils.executeCommandLine(cl, null, output, error);
         if (ret != 0) {
-            System.err.println("Error generating code using protoc: " + error.getOutput());
+            throw new GeneratorException("Protoc error: " + error.getOutput());
         }
     }
 
@@ -80,7 +81,7 @@ public class ProtoGenImpl implements ProtoGen {
             try (PrintWriter out = new PrintWriter(builderFile.openWriter())) {
                 out.println("package " + protoFile.getPackageName() + ";");
                 out.println("");
-                out.println("import com.google.protobuf.Descriptors;");
+                out.println("import com.google.protobuf.*;");
                 out.println("import java.util.concurrent.CompletableFuture;");
                 out.println("import io.github.lwlee2608.proto.gen.util.CompletableFutureUtil;");
                 out.println("import io.github.lwlee2608.proto.gen.util.StreamObserverUtil;");
@@ -109,7 +110,17 @@ public class ProtoGenImpl implements ProtoGen {
                     for (Field field : message.getFields()) {
                         String setter = getSetter(field.getName());
                         String getter = getGetter(field.getName());
-                        out.println("            builder." + setter + "(pojo." + getter + "());");
+                        if (field.getIsStruct()) {
+                            String messageType = getSimpleClass(field.getJavaType()) + "Message";
+                            out.println("            if (pojo." + getter +"() != null) {");
+                            out.println("                builder." + setter + "(" + messageType + ".toProto(pojo." + getter + "()));");
+                            out.println("            }");
+                        } else {
+                            String wrapperFunction = getSimpleClass(field.getProtoType()) + ".of";
+                            out.println("            if (pojo." + getter +"() != null) {");
+                            out.println("                builder." + setter + "(" + wrapperFunction + "(pojo." + getter + "()));");
+                            out.println("            }");
+                        }
                     }
                     out.println("            return builder.build();");
                     out.println("        }");
@@ -119,7 +130,17 @@ public class ProtoGenImpl implements ProtoGen {
                     for (Field field : message.getFields()) {
                         String setter = getSetter(field.getName());
                         String getter = getGetter(field.getName());
-                        out.println("            pojo." + setter + "(proto." + getter + "());");
+                        String hasFunction = getHasFunction(field.getName());
+                        if (field.getIsStruct()) {
+                            String messageType = getSimpleClass(field.getJavaType()) + "Message";
+                            out.println("            if (proto." + hasFunction +"()) {");
+                            out.println("                pojo." + setter + "(" + messageType + ".fromProto(proto." + getter + "()));");
+                            out.println("            }");
+                        } else {
+                            out.println("            if (proto." + hasFunction +"()) {");
+                            out.println("                pojo." + setter + "(proto." + getter + "().getValue());");
+                            out.println("            }");
+                        }
                     }
                     out.println("            return pojo;");
                     out.println("        }");
@@ -242,5 +263,15 @@ public class ProtoGenImpl implements ProtoGen {
     private String getGetter(String fieldName) {
         String name = fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
         return "get" + name;
+    }
+
+    private String getHasFunction(String fieldName) {
+        String name = fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+        return "has" + name;
+    }
+
+    private String getSimpleClass(String fullyQualifiedClassName) {
+        String[] split = fullyQualifiedClassName.split("\\.");
+        return split[split.length - 1];
     }
 }

@@ -4,6 +4,7 @@ import com.google.auto.service.AutoService;
 import io.github.lwlee2608.proto.annotation.ProtoField;
 import io.github.lwlee2608.proto.annotation.ProtoMessage;
 import io.github.lwlee2608.proto.annotation.ProtoService;
+import io.github.lwlee2608.proto.annotation.exception.UnsupportedTypeException;
 import io.github.lwlee2608.proto.gen.ClassFinder;
 import io.github.lwlee2608.proto.gen.ProtoGen;
 import lombok.SneakyThrows;
@@ -22,7 +23,9 @@ import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -72,7 +75,7 @@ public class ProtoProcessor extends AbstractProcessor {
                     protoFile.setProtoPackage(protoPackage);
                     protoFile.addMessage(message);
 
-//                    System.out.println("Message is " + message);
+                    // System.out.println("Message is " + message);
 
                 } else if (element.getKind() == ElementKind.FIELD) {
                     TypeElement classElement = (TypeElement) element.getEnclosingElement();
@@ -87,9 +90,10 @@ public class ProtoProcessor extends AbstractProcessor {
                             .setName(fieldName)
                             .setJavaType(javaType)
                             .setProtoType(protoType)
+                            .setIsStruct(false)
                             .setTag(tag));
 
-//                    System.out.println("Field is " + fieldName);
+                    // System.out.println("Field is " + fieldName);
 
                 } else if (element.getKind() == ElementKind.INTERFACE) {
                     TypeElement typeElement = (TypeElement) element;
@@ -165,12 +169,17 @@ public class ProtoProcessor extends AbstractProcessor {
 
         if (!written) {
             written = true;
+            // Generate .proto file from annotation
             for (Map.Entry<String, ProtoFile> entry : protoFiles.entrySet()) {
                 ProtoFile protoFile = entry.getValue();
                 File generatedProfoFile = writeProtoFile(protoFile);
                 protoFile.setGeneratedFile(generatedProfoFile);
             }
 
+            // Copy wrappers.proto
+            copyWrappers();
+
+            // Generate Java source code
             Class<ProtoGen> clazz = ClassFinder.findClass(ProtoGen.class, "io.github.lwlee2608.proto.gen");
             if (!clazz.isInterface()) {
                 ProtoGen gen = clazz.getDeclaredConstructor().newInstance();
@@ -186,12 +195,12 @@ public class ProtoProcessor extends AbstractProcessor {
         String packageName = protoFile.getPackageName();
         String protoPackage = protoFile.getProtoPackage();
 
-        FileObject resourceFile = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", fileName);
+        FileObject resourceFile = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "proto", fileName);
 
         try (PrintWriter out = new PrintWriter(resourceFile.openWriter())) {
             out.println("syntax = \"proto3\";");
-            //out.println("");
-            //out.println("import \"google/protobuf/wrappers.proto\";");
+            out.println("");
+            out.println("import \"google/protobuf/wrappers.proto\";");
             out.println("");
             out.println("option java_package = \"" + packageName + "\";");
             out.println("");
@@ -222,6 +231,19 @@ public class ProtoProcessor extends AbstractProcessor {
         return Paths.get(resourceFile.toUri()).toFile();
     }
 
+    private void copyWrappers() {
+        try (InputStream in = ProtoProcessor.class.getResourceAsStream("/wrappers.proto")) {
+            assert in != null;
+            String content = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            FileObject resourceFile = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "proto", "google/protobuf/wrappers.proto");
+            try (PrintWriter out = new PrintWriter(resourceFile.openWriter())) {
+                out.println(content);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private String getPackage(String fullyQualifiedClassName) {
         String[] split = fullyQualifiedClassName.split("\\.");
         return String.join(".", Arrays.copyOfRange(split, 0, split.length - 1));
@@ -248,10 +270,15 @@ public class ProtoProcessor extends AbstractProcessor {
 
     private String toProtoType(String javaType) {
         switch (javaType) {
-            case "java.lang.String": return "string";
-            case "java.lang.Integer": return "int32";
-            case "java.lang.Long": return "int64";
-            default: throw new RuntimeException("Java type " + javaType + " not supported");
+            case "java.lang.String": return "google.protobuf.StringValue";
+            case "java.lang.Short":
+            case "java.lang.Integer": return "google.protobuf.Int32Value";
+            case "java.lang.Long": return "google.protobuf.Int64Value";
+            case "java.lang.Float": return "google.protobuf.FloatValue";
+            case "java.lang.Double": return "google.protobuf.DoubleValue";
+            case "java.lang.Boolean": return "google.protobuf.BooleanValue";
+            case "java.lang.Byte[]": return "google.protobuf.BytesValue";
+            default: throw new UnsupportedTypeException("Java type " + javaType + " not supported");
         }
     }
 }

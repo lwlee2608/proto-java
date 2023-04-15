@@ -10,4 +10,5 @@ public class Field {
     private String javaType;
     private String protoType;
     private Integer tag;
+    private Boolean isStruct;
 }
