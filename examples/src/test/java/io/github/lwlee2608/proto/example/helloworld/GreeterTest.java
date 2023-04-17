@@ -35,8 +35,52 @@ class GreeterTest {
                 .build();
 
         Greeter client = new HelloworldProto.GreeterService.GreeterClientImpl(channel, CallOptions.DEFAULT);
+        HelloReply reply = client.sayHello(new HelloRequest().setMessage("Hello")).get(2, TimeUnit.SECONDS);
+
+        Assertions.assertEquals("Hello World", reply.getName());
+        server.shutdown();
+    }
+
+    @Test
+    void testHelloWorldWithPayload() throws IOException, InterruptedException, ExecutionException, TimeoutException {
+        int port = 8080;
+        Server server = ServerBuilder
+                .forPort(port)
+                .addService(new HelloworldProto.GreeterService.GreeterServerImpl(new Greeter() {
+                    @Override
+                    public CompletableFuture<HelloReply> sayHello(HelloRequest request) {
+                        return CompletableFuture.completedFuture(new HelloReply()
+                                .setName(request.getMessage() + " World")
+                                .setPayload(new AllTypePayload()
+                                        .setLongField(2L)
+                                        .setBooleanField(true)
+                                        .setDoubleField(3.1)
+                                        .setFloatField(4.2f)
+                                        .setResultCode(ResultCode.SUCCESS))
+                        );
+                    }
+                }))
+                .build();
+        server.start();
+
+        ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", port)
+                .usePlaintext()
+                .build();
+
+        Greeter client = new HelloworldProto.GreeterService.GreeterClientImpl(channel, CallOptions.DEFAULT);
         HelloReply reply = client.sayHello(new HelloRequest().setMessage("Hello").setId(1)).get(2, TimeUnit.SECONDS);
 
         Assertions.assertEquals("Hello World", reply.getName());
+        Assertions.assertNotNull(reply.getPayload());
+        // Nullable Field
+        Assertions.assertNull(reply.getPayload().getStringField());
+        Assertions.assertNull(reply.getPayload().getIntegerField());
+        // Assert Other Data Type
+        Assertions.assertEquals(2L, reply.getPayload().getLongField());
+        Assertions.assertEquals(true, reply.getPayload().getBooleanField());
+        Assertions.assertEquals(3.1, reply.getPayload().getDoubleField());
+        Assertions.assertEquals(4.2f, reply.getPayload().getFloatField());
+        Assertions.assertEquals(ResultCode.SUCCESS, reply.getPayload().getResultCode());
+        server.shutdown();
     }
 }
