@@ -2,6 +2,7 @@ package io.github.lwlee2608.proto.gen;
 
 import io.github.lwlee2608.proto.annotation.exception.GeneratorException;
 import io.github.lwlee2608.proto.annotation.processor.AsyncType;
+import io.github.lwlee2608.proto.annotation.processor.Enumerated;
 import io.github.lwlee2608.proto.annotation.processor.Field;
 import io.github.lwlee2608.proto.annotation.processor.Message;
 import io.github.lwlee2608.proto.annotation.processor.Method;
@@ -100,7 +101,30 @@ public class ProtoGenImpl implements ProtoGen {
                 out.println("");
                 out.println("public class " + className + " {");
                 out.println("");
-                out.println("    // Messages");
+
+                if (protoFile.getEnums().size() > 0) {
+                    out.println("    // Enum");
+                }
+                for (Enumerated enumerated : protoFile.getEnums()) {
+                    String enumClassName = enumerated.getClassName();
+                    String protoEnumClassName = protoFile.getOuterClassName() + "." + enumClassName;
+
+                    out.println("    public static class " + enumClassName + "Enum {");
+                    out.println("       public static " + protoEnumClassName + "Enum toProto(" + enumClassName + " pojo) {");
+                    out.println("           return " + protoEnumClassName + "Enum.newBuilder()");
+                    out.println("                   .setValue(" + protoEnumClassName + ".valueOf(pojo.value())).build();");
+                    out.println("       }");
+                    out.println("");
+                    out.println("       public static " + enumClassName + " fromProto(" + protoEnumClassName + "Enum proto) {");
+                    out.println("           return " + enumClassName + ".valueOf(proto.getValueValue());");
+                    out.println("       }");
+                    out.println("    }");
+                    out.println("");
+                }
+
+                if (protoFile.getMessages().size() > 0) {
+                    out.println("    // Messages");
+                }
                 for (Message message : protoFile.getMessages()) {
                     String messageClassName = message.getClassName();
                     String protoMessageClassName = protoFile.getOuterClassName() + "." + messageClassName;
@@ -114,6 +138,11 @@ public class ProtoGenImpl implements ProtoGen {
                             String messageType = getSimpleClass(field.getJavaType()) + "Message";
                             out.println("            if (pojo." + getter +"() != null) {");
                             out.println("                builder." + setter + "(" + messageType + ".toProto(pojo." + getter + "()));");
+                            out.println("            }");
+                        } else if (field.getIsEnum()) {
+                            String enumType = field.getProtoType();
+                            out.println("            if (pojo." + getter + "() != null) {");
+                            out.println("                builder." + setter + "(" + enumType + ".toProto(pojo." + getter + "()));");
                             out.println("            }");
                         } else {
                             String wrapperFunction = getSimpleClass(field.getProtoType()) + ".of";
@@ -136,6 +165,11 @@ public class ProtoGenImpl implements ProtoGen {
                             out.println("            if (proto." + hasFunction +"()) {");
                             out.println("                pojo." + setter + "(" + messageType + ".fromProto(proto." + getter + "()));");
                             out.println("            }");
+                        } else if (field.getIsEnum()) {
+                            String enumType = field.getProtoType();
+                            out.println("            if (proto." + hasFunction +"()) {");
+                            out.println("                pojo." + setter + "(" + enumType + ".fromProto(proto." + getter + "()));");
+                            out.println("            }");
                         } else {
                             out.println("            if (proto." + hasFunction +"()) {");
                             out.println("                pojo." + setter + "(proto." + getter + "().getValue());");
@@ -147,7 +181,9 @@ public class ProtoGenImpl implements ProtoGen {
                     out.println("    }");
                     out.println("");
                 }
-                out.println("    // Services");
+                if (protoFile.getServices().size() > 0) {
+                    out.println("    // Services");
+                }
                 for (Service service : protoFile.getServices()) {
                     out.println("    public static class " + service.getServiceName() + "Service {");
                     out.println("        public static final String SERVICE_NAME = \"" + service.getFullServiceName() + "\";");

@@ -16,9 +16,15 @@ public class ProtoFile {
 //    private String className;
     private String packageName;
     private String protoPackage;
+    private List<Enumerated> enums = new ArrayList<>();
     private List<Message> messages = new ArrayList<>();
     private List<Service> services = new ArrayList<>();
     private File generatedFile;
+
+    public ProtoFile addEnum(Enumerated enumerated) {
+        enums.add(enumerated);
+        return this;
+    }
 
     public ProtoFile addMessage(Message message) {
         messages.add(message);

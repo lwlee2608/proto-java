@@ -11,4 +11,6 @@ public class Field {
     private String protoType;
     private Integer tag;
     private Boolean isStruct;
+    private Boolean isEnum;
+    // private Boolean isList; // TODO
 }
