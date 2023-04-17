@@ -10,4 +10,5 @@ import lombok.experimental.Accessors;
 @ProtoMessage(protoName = "helloworld", protoPackage = "example.helloworld")
 public class HelloReply {
     @ProtoField(tag = 1) private String name;
+    @ProtoField(tag = 2) private AllTypePayload payload;
 }
