@@ -1,9 +1,12 @@
 package io.github.lwlee2608.proto.annotation.processor;
 
 import com.google.auto.service.AutoService;
+import io.github.lwlee2608.proto.annotation.ProtoEnumConstant;
+import io.github.lwlee2608.proto.annotation.ProtoEnumerated;
 import io.github.lwlee2608.proto.annotation.ProtoField;
 import io.github.lwlee2608.proto.annotation.ProtoMessage;
 import io.github.lwlee2608.proto.annotation.ProtoService;
+import io.github.lwlee2608.proto.annotation.exception.UnsupportedTypeException;
 import io.github.lwlee2608.proto.gen.ClassFinder;
 import io.github.lwlee2608.proto.gen.ProtoGen;
 import lombok.SneakyThrows;
@@ -22,7 +25,9 @@ import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,6 +38,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @SupportedAnnotationTypes({
+        "io.github.lwlee2608.proto.annotation.ProtoEnumerated",
+        "io.github.lwlee2608.proto.annotation.ProtoEnumConstant",
         "io.github.lwlee2608.proto.annotation.ProtoMessage",
         "io.github.lwlee2608.proto.annotation.ProtoField",
         "io.github.lwlee2608.proto.annotation.ProtoService",
@@ -42,6 +49,7 @@ import java.util.regex.Pattern;
 public class ProtoProcessor extends AbstractProcessor {
 
     private static final Map<String, ProtoFile> protoFiles = new HashMap<>();
+    private static final Map<String, Enumerated> enums = new HashMap<>();
     private static final Map<String, Message> messages = new HashMap<>();
     private static final Map<String, Service> services = new HashMap<>();
     private static Boolean written = false;
@@ -72,24 +80,84 @@ public class ProtoProcessor extends AbstractProcessor {
                     protoFile.setProtoPackage(protoPackage);
                     protoFile.addMessage(message);
 
-//                    System.out.println("Message is " + message);
+                    // System.out.println("Message is " + message);
+
+                } else if (element.getKind() == ElementKind.ENUM) {
+                    String name = element.asType().toString();
+                    //System.out.println("Enum: " + name);
+
+                    TypeElement typeElement = (TypeElement) element;
+                    String fullClassName = typeElement.getQualifiedName().toString();
+                    String className = typeElement.getSimpleName().toString();
+                    String protoPackage = typeElement.getAnnotation(ProtoEnumerated.class).protoPackage();
+                    String protoName = typeElement.getAnnotation(ProtoEnumerated.class).protoName();
+                    String packageName = getPackage(fullClassName);
+                    String outerClassName = getOuterClassName(protoName);
+                    Enumerated enumerated = enums.computeIfAbsent(fullClassName, key -> new Enumerated().setFullClassName(fullClassName));
+                    enumerated.setClassName(className);
+                    enumerated.setPackageName(packageName);
+
+                    ProtoFile protoFile = protoFiles.computeIfAbsent(protoName, key -> new ProtoFile().setFileName(protoName + ".proto"));
+                    protoFile.setOuterClassName(outerClassName);
+                    protoFile.setPackageName(packageName);
+                    protoFile.setProtoPackage(protoPackage);
+                    protoFile.addEnum(enumerated);
+
+                } else if (element.getKind() == ElementKind.ENUM_CONSTANT) {
+                    //String name = element.asType().toString();
+                    //System.out.println("Enum Constant : " + name);
+
+                    int value = element.getAnnotation(ProtoEnumConstant.class).value();
+                    TypeElement classElement = (TypeElement) element.getEnclosingElement();
+                    String fullClassName = classElement.getQualifiedName().toString();
+                    String constant = element.getSimpleName().toString();
+                    EnumConstant enumConstant = new EnumConstant();
+                    enumConstant.setConstant(constant);
+                    enumConstant.setValue(value);
+
+                    Enumerated enumerated = enums.computeIfAbsent(fullClassName, key -> new Enumerated().setFullClassName(fullClassName));
+                    enumerated.addConstant(enumConstant);
 
                 } else if (element.getKind() == ElementKind.FIELD) {
                     TypeElement classElement = (TypeElement) element.getEnclosingElement();
                     String fullClassName = classElement.getQualifiedName().toString();
                     String fieldName = element.getSimpleName().toString();
                     String javaType = element.asType().toString();
-                    String protoType = toProtoType(javaType);
                     Integer tag = element.getAnnotation(ProtoField.class).tag();
+                    String protoType;
+                    boolean isStruct = false;
+                    boolean isEnum = false;
+                    try {
+                        protoType = toProtoType(javaType);
+                    } catch (UnsupportedTypeException e) {
+                        Enumerated enumerated = enums.get(javaType);
+                        if (enumerated != null) {
+                            // Check if field is Enum
+                            protoType = getSimpleClass(javaType) + "Enum";
+                            isEnum = true;
+
+                        } else {
+                            // Check if field is Struct
+                            Message message = messages.get(javaType);
+                            if (message == null) {
+                                // Throw error, field is neither Enum or Struct.
+                                throw e;
+                            }
+                            protoType = getSimpleClass(javaType);
+                            isStruct = true;
+                        }
+                    }
 
                     Message message = messages.computeIfAbsent(fullClassName, key -> new Message().setFullClassName(fullClassName));
                     message.addField(new Field()
                             .setName(fieldName)
                             .setJavaType(javaType)
                             .setProtoType(protoType)
+                            .setIsStruct(isStruct)
+                            .setIsEnum(isEnum)
                             .setTag(tag));
 
-//                    System.out.println("Field is " + fieldName);
+                    // System.out.println("Field is " + fieldName);
 
                 } else if (element.getKind() == ElementKind.INTERFACE) {
                     TypeElement typeElement = (TypeElement) element;
@@ -165,12 +233,17 @@ public class ProtoProcessor extends AbstractProcessor {
 
         if (!written) {
             written = true;
+            // Generate .proto file from annotation
             for (Map.Entry<String, ProtoFile> entry : protoFiles.entrySet()) {
                 ProtoFile protoFile = entry.getValue();
                 File generatedProfoFile = writeProtoFile(protoFile);
                 protoFile.setGeneratedFile(generatedProfoFile);
             }
 
+            // Copy wrappers.proto
+            copyWrappers();
+
+            // Generate Java source code
             Class<ProtoGen> clazz = ClassFinder.findClass(ProtoGen.class, "io.github.lwlee2608.proto.gen");
             if (!clazz.isInterface()) {
                 ProtoGen gen = clazz.getDeclaredConstructor().newInstance();
@@ -186,17 +259,30 @@ public class ProtoProcessor extends AbstractProcessor {
         String packageName = protoFile.getPackageName();
         String protoPackage = protoFile.getProtoPackage();
 
-        FileObject resourceFile = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", fileName);
+        FileObject resourceFile = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "proto", fileName);
 
         try (PrintWriter out = new PrintWriter(resourceFile.openWriter())) {
             out.println("syntax = \"proto3\";");
-            //out.println("");
-            //out.println("import \"google/protobuf/wrappers.proto\";");
+            out.println("");
+            out.println("import \"google/protobuf/wrappers.proto\";");
             out.println("");
             out.println("option java_package = \"" + packageName + "\";");
             out.println("");
             out.println("package " + protoPackage + ";");
             out.println("");
+            for (Enumerated enumerated : protoFile.getEnums()) {
+                String className = enumerated.getClassName();
+                out.println("enum " + className + " {");
+                for (EnumConstant enumConstant : enumerated.getConstants()) {
+                    out.println(String.format("    %s = %d;", enumConstant.getConstant(), enumConstant.getValue()));
+                }
+                out.println("}");
+                out.println("");
+                out.println("message " + className + "Enum {");
+                out.println("    " + className + " value = 1;");
+                out.println("}");
+                out.println("");
+            }
             for (Message message : protoFile.getMessages()) {
                 String className = message.getClassName();
                 out.println("message " + className + " {");
@@ -220,6 +306,19 @@ public class ProtoProcessor extends AbstractProcessor {
         }
 
         return Paths.get(resourceFile.toUri()).toFile();
+    }
+
+    private void copyWrappers() {
+        try (InputStream in = ProtoProcessor.class.getResourceAsStream("/wrappers.proto")) {
+            assert in != null;
+            String content = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            FileObject resourceFile = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "proto", "google/protobuf/wrappers.proto");
+            try (PrintWriter out = new PrintWriter(resourceFile.openWriter())) {
+                out.println(content);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private String getPackage(String fullyQualifiedClassName) {
@@ -248,10 +347,15 @@ public class ProtoProcessor extends AbstractProcessor {
 
     private String toProtoType(String javaType) {
         switch (javaType) {
-            case "java.lang.String": return "string";
-            case "java.lang.Integer": return "int32";
-            case "java.lang.Long": return "int64";
-            default: throw new RuntimeException("Java type " + javaType + " not supported");
+            case "java.lang.String": return "google.protobuf.StringValue";
+            case "java.lang.Short":
+            case "java.lang.Integer": return "google.protobuf.Int32Value";
+            case "java.lang.Long": return "google.protobuf.Int64Value";
+            case "java.lang.Float": return "google.protobuf.FloatValue";
+            case "java.lang.Double": return "google.protobuf.DoubleValue";
+            case "java.lang.Boolean": return "google.protobuf.BoolValue";
+            case "java.lang.Byte[]": return "google.protobuf.BytesValue";
+            default: throw new UnsupportedTypeException("Java type " + javaType + " not supported");
         }
     }
 }

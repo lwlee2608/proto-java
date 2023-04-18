@@ -13,9 +13,20 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.Set;
 
 @Mojo(name = "download")
 public class DownloadMojo extends AbstractMojo {
+
+    @Parameter(
+            name = "mavenRepoUrl",
+            property = "maven.repo.url",
+            defaultValue = "https://repo1.maven.org/maven2"
+    )
+    // Alternative mirrors: https://repo1.maven.org/maven2, https://repo.maven.apache.org/maven2
+    private String mavenRepoUrl;
+
     @Parameter(
             name = "outputDirectory",
             property = "output.dir",
@@ -26,54 +37,70 @@ public class DownloadMojo extends AbstractMojo {
     @Parameter(
             name = "protocVersion",
             property = "protoc.version",
-            defaultValue = "3.4.0"
+            defaultValue = "3.22.3"
     )
     private String protocVersion;
 
     @Parameter(
             name = "os",
             property = "os.identifier",
-            defaultValue = "linux-x86_64"
+            defaultValue = ""
     )
     private String os;
 
-    public void execute() {
-        getLog().info("Starting download protoc binary");
-        // Download Binary
-        String downloadUrl = "https://repo1.maven.org/maven2/com/google/protobuf/protoc/" + protocVersion + "/protoc-" + protocVersion + "-" + os + ".exe";
+    private PlatformIdentifier.OperationSystem operationSystem = PlatformIdentifier.getOperationSystem();
+    private PlatformIdentifier.Architecture architecture = PlatformIdentifier.getArchitecture();
 
+    public void execute() {
+        if (os == null || os.isEmpty()) {
+            os = resolveOperationSystem();
+        }
+
+        // Download Binary
+        String downloadUrl = mavenRepoUrl + "/com/google/protobuf/protoc/" + protocVersion + "/protoc-" + protocVersion + "-" + os + ".exe";
+        getLog().info("Starting download protoc binary from " + downloadUrl);
+
+        Path targetProtocBinary = Paths.get(outputDirectory.getAbsolutePath() + "/bin/protoc.exe");
         try {
-            downloadFile(downloadUrl, outputDirectory.getAbsolutePath() + "/bin/protoc");
+            downloadFile(downloadUrl, targetProtocBinary);
         } catch (Exception e) {
             getLog().error("Fail to download protoc binary with URL: " + downloadUrl);
             getLog().error("error: " + e.getMessage());
             throw new RuntimeException(e);
         }
 
-        // Make binary executable
-        try {
-            ProcessBuilder pb = new ProcessBuilder("chmod", "+x", outputDirectory.getAbsolutePath() + "/bin/protoc");
+        setExecutable(targetProtocBinary);
 
-            Process p = pb.start();
-
-            int exitCode = p.waitFor();
-
-            if (exitCode != 0) {
-                System.err.println("Error: chmod exited with code " + exitCode);
-            }
-        } catch (IOException | InterruptedException e) {
-            getLog().error("Fail to make binary executable");
-            throw new RuntimeException(e);
-        }
         getLog().info("Proto Java plugin completed");
     }
 
-    private void downloadFile(String url, String destination) throws Exception {
+    private String resolveOperationSystem() {
+        // follow naming convention in https://repo1.maven.org/maven2/com/google/protobuf/protoc/3.22.3/
+        switch (operationSystem) {
+            case WINDOWS:
+                return "windows-x86_64";
+            case LINUX:
+                switch (architecture) {
+                    case AMD64: return "linux-x86_64";
+                    case AARCH64: return "osx-aarch_64";
+                }
+                break;
+            case MAC:
+                switch (architecture) {
+                    case AMD64: return "osx-x86_64";
+                    case AARCH64: return "osx-aarch_64";
+                }
+                break;
+        }
+
+        throw new RuntimeException("Unsupported OS or architecture. Please specific os.identifier parameter for proto-java-plugin");
+    }
+
+    private void downloadFile(String url, Path outputFile) throws Exception {
         URL downloadUrl = new URL(url);
         ReadableByteChannel rbc = Channels.newChannel(downloadUrl.openStream());
 
         // Create directory structure for output file
-        Path outputFile = Paths.get(destination);
         Path outputDirectory = outputFile.getParent();
         if (outputDirectory != null && !Files.exists(outputDirectory)) {
             Files.createDirectories(outputDirectory);
@@ -83,5 +110,22 @@ public class DownloadMojo extends AbstractMojo {
         fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
         fos.close();
         rbc.close();
+    }
+
+    private void setExecutable(Path path) {
+        // Make binary executable
+        if (operationSystem == PlatformIdentifier.OperationSystem.WINDOWS) {
+            return;
+        }
+
+        try {
+            Set<PosixFilePermission> filePermissions = Files.getPosixFilePermissions(path);
+            filePermissions.add(PosixFilePermission.OWNER_EXECUTE);
+
+            Files.setPosixFilePermissions(path, filePermissions);
+        } catch (IOException e) {
+            getLog().error("Fail to make binary executable");
+            throw new RuntimeException(e);
+        }
     }
 }
