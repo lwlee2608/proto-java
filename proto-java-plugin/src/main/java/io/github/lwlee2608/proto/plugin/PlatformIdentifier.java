@@ -26,7 +26,9 @@ public class PlatformIdentifier {
 
     public static Architecture getArchitecture() {
         switch (OS_ARCH) {
-            case "amd64": return Architecture.AMD64;
+            case "amd64":
+            case "x86_64":
+                return Architecture.AMD64;
             case "aarch64": return Architecture.AARCH64;
             default: return Architecture.OTHERS;
         }
