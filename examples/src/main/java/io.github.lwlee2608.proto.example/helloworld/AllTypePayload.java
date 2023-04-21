@@ -5,6 +5,8 @@ import io.github.lwlee2608.proto.annotation.ProtoMessage;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
+import java.util.List;
+
 @Data
 @Accessors(chain = true)
 @ProtoMessage(protoName = "helloworld", protoPackage = "example.helloworld")
@@ -18,4 +20,5 @@ public class AllTypePayload {
     //@ProtoField(tag = 7) private Short shortField;
     //@ProtoField(tag = 8) private Byte[] bytesField;
     @ProtoField(tag = 10) private ResultCode resultCode;
+    @ProtoField(tag = 11) private List<Integer> arrayIntField;
 }

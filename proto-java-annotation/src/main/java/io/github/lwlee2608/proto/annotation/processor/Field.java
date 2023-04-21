@@ -13,5 +13,4 @@ public class Field {
     private Boolean isStruct;
     private Boolean isEnum;
     private Boolean isList;
-    // private Boolean isList; // TODO
 }
