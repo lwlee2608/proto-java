@@ -139,7 +139,7 @@ public class ProtoProcessor extends AbstractProcessor {
 
                         } else if (javaType.startsWith("java.util.List")) {
                             String subJavaType = javaType.substring(javaType.indexOf("<")+1, javaType.indexOf(">"));
-                            protoType = "repeated " + toProtoType(subJavaType);
+                            protoType = toProtoType(subJavaType);
                             isList = true;
                         } else {
                             // Check if field is Struct
@@ -293,7 +293,11 @@ public class ProtoProcessor extends AbstractProcessor {
                 String className = message.getClassName();
                 out.println("message " + className + " {");
                 for (Field field : message.getFields()) {
-                    out.println(String.format("    %s %s = %d;", field.getProtoType(), field.getName(), field.getTag()));
+                    if (field.getIsList()) {
+                        out.println(String.format("    repeated %s %s = %d;", field.getProtoType(), field.getName(), field.getTag()));
+                    } else {
+                        out.println(String.format("    %s %s = %d;", field.getProtoType(), field.getName(), field.getTag()));
+                    }
                 }
                 out.println("}");
                 out.println("");

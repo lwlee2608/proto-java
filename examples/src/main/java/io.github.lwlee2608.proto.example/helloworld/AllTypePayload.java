@@ -21,4 +21,5 @@ public class AllTypePayload {
     //@ProtoField(tag = 8) private Byte[] bytesField;
     @ProtoField(tag = 10) private ResultCode resultCode;
     @ProtoField(tag = 11) private List<Integer> arrayIntField;
+    @ProtoField(tag = 12) private List<String> arrayStringField;
 }
