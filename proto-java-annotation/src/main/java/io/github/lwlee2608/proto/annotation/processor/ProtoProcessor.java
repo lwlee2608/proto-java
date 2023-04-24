@@ -127,6 +127,7 @@ public class ProtoProcessor extends AbstractProcessor {
                     String protoType;
                     boolean isStruct = false;
                     boolean isEnum = false;
+                    boolean isList = false;
                     try {
                         protoType = toProtoType(javaType);
                     } catch (UnsupportedTypeException e) {
@@ -136,6 +137,10 @@ public class ProtoProcessor extends AbstractProcessor {
                             protoType = getSimpleClass(javaType) + "Enum";
                             isEnum = true;
 
+                        } else if (javaType.startsWith("java.util.List")) {
+                            String subJavaType = javaType.substring(javaType.indexOf("<")+1, javaType.indexOf(">"));
+                            protoType = toProtoType(subJavaType);
+                            isList = true;
                         } else {
                             // Check if field is Struct
                             Message message = messages.get(javaType);
@@ -155,6 +160,7 @@ public class ProtoProcessor extends AbstractProcessor {
                             .setProtoType(protoType)
                             .setIsStruct(isStruct)
                             .setIsEnum(isEnum)
+                            .setIsList(isList)
                             .setTag(tag));
 
                     // System.out.println("Field is " + fieldName);
@@ -287,7 +293,11 @@ public class ProtoProcessor extends AbstractProcessor {
                 String className = message.getClassName();
                 out.println("message " + className + " {");
                 for (Field field : message.getFields()) {
-                    out.println(String.format("    %s %s = %d;", field.getProtoType(), field.getName(), field.getTag()));
+                    if (field.getIsList()) {
+                        out.println(String.format("    repeated %s %s = %d;", field.getProtoType(), field.getName(), field.getTag()));
+                    } else {
+                        out.println(String.format("    %s %s = %d;", field.getProtoType(), field.getName(), field.getTag()));
+                    }
                 }
                 out.println("}");
                 out.println("");
@@ -346,6 +356,7 @@ public class ProtoProcessor extends AbstractProcessor {
     }
 
     private String toProtoType(String javaType) {
+
         switch (javaType) {
             case "java.lang.String": return "google.protobuf.StringValue";
             case "java.lang.Short":

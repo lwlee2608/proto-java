@@ -5,6 +5,8 @@ import io.github.lwlee2608.proto.annotation.ProtoMessage;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
+import java.util.List;
+
 @Data
 @Accessors(chain = true)
 @ProtoMessage(protoName = "helloworld", protoPackage = "example.helloworld")
