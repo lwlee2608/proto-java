@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -63,6 +64,7 @@ class GreeterTest {
                                         .setArrayPayloadField(List.of(new SimplePayload()
                                                 .setStringField("foo")
                                                 .setIntegerField(200)))
+                                        .setMetadata(Map.of("key1", "value1", "key2", "value2"))
                                 )
                         );
                     }
@@ -92,6 +94,8 @@ class GreeterTest {
         Assertions.assertArrayEquals(new String[]{"Aa1", "Bb2"}, reply.getPayload().getArrayStringField().toArray(new String[0]));
         Assertions.assertEquals("foo", reply.getPayload().getArrayPayloadField().get(0).getStringField());
         Assertions.assertEquals(200, reply.getPayload().getArrayPayloadField().get(0).getIntegerField());
+        Assertions.assertEquals("value1", reply.getPayload().getMetadata().get("key1"));
+        Assertions.assertEquals("value2", reply.getPayload().getMetadata().get("key2"));
         server.shutdown();
     }
 }
