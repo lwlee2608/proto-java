@@ -22,4 +22,5 @@ public class AllTypePayload {
     @ProtoField(tag = 10) private ResultCode resultCode;
     @ProtoField(tag = 11) private List<Integer> arrayIntField;
     @ProtoField(tag = 12) private List<String> arrayStringField;
+    @ProtoField(tag = 13) private List<SimplePayload> arrayPayloadField;
 }
