@@ -128,12 +128,13 @@ public class ProtoProcessor extends AbstractProcessor {
                     boolean isStruct = false;
                     boolean isEnum = false;
                     boolean isList = false;
+                    boolean isMap = false;
                     try {
                         protoType = toProtoType(javaType);
                     } catch (UnsupportedTypeException e1) {
                         Enumerated enumerated = enums.get(javaType);
                         if (javaType.startsWith("java.util.List")) {
-                            String subJavaType = javaType.substring(javaType.indexOf("<") + 1, javaType.indexOf(">"));
+                            String subJavaType = extractTemplate(javaType, "java.util.List<(.*?)>");
                             isList = true;
 
                             // Get List type
@@ -153,6 +154,16 @@ public class ProtoProcessor extends AbstractProcessor {
                                     isStruct = true;
                                 }
                             }
+                        } else if (javaType.startsWith("java.util.Map")) {
+                            String str = extractTemplate(javaType, "java.util.Map<(.*?)>");
+                            assert str != null;
+                            String[] split = str.split(",");
+                            if (!"java.lang.String".equals(split[0])) {
+                                throw new RuntimeException("Invalid parameters. Only string is supported as map's key");
+                            }
+                            // TODO support enum & nested field
+                            protoType = toProtoTypeNoConvert(split[1]);
+                            isMap = true;
 
                         } else if (enumerated != null) {
                             // Check if field is Enum
@@ -179,6 +190,7 @@ public class ProtoProcessor extends AbstractProcessor {
                             .setIsStruct(isStruct)
                             .setIsEnum(isEnum)
                             .setIsList(isList)
+                            .setIsMap(isMap)
                             .setTag(tag));
 
                     // System.out.println("Field is " + fieldName);
@@ -313,6 +325,8 @@ public class ProtoProcessor extends AbstractProcessor {
                 for (Field field : message.getFields()) {
                     if (field.getIsList()) {
                         out.println(String.format("    repeated %s %s = %d;", field.getProtoType(), field.getName(), field.getTag()));
+                    } else if (field.getIsMap()) {
+                        out.println(String.format("    map<string, %s> %s = %d;", field.getProtoType(), field.getName(), field.getTag()));
                     } else {
                         out.println(String.format("    %s %s = %d;", field.getProtoType(), field.getName(), field.getTag()));
                     }
@@ -374,7 +388,6 @@ public class ProtoProcessor extends AbstractProcessor {
     }
 
     private String toProtoType(String javaType) {
-
         switch (javaType) {
             case "java.lang.String": return "google.protobuf.StringValue";
             case "java.lang.Short":
@@ -384,6 +397,20 @@ public class ProtoProcessor extends AbstractProcessor {
             case "java.lang.Double": return "google.protobuf.DoubleValue";
             case "java.lang.Boolean": return "google.protobuf.BoolValue";
             case "java.lang.Byte[]": return "google.protobuf.BytesValue";
+            default: throw new UnsupportedTypeException("Java type " + javaType + " not supported");
+        }
+    }
+
+    private String toProtoTypeNoConvert(String javaType) {
+        switch (javaType) {
+            case "java.lang.String": return "string";
+            case "java.lang.Short":
+            case "java.lang.Integer": return "int32";
+            case "java.lang.Long": return "int64";
+            case "java.lang.Float": return "float";
+            case "java.lang.Double": return "double";
+            case "java.lang.Boolean": return "bool";
+            case "java.lang.Byte[]": return "bytes";
             default: throw new UnsupportedTypeException("Java type " + javaType + " not supported");
         }
     }

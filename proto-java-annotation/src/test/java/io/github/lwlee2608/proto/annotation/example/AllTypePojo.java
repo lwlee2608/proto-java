@@ -3,6 +3,8 @@ package io.github.lwlee2608.proto.annotation.example;
 import io.github.lwlee2608.proto.annotation.ProtoField;
 import io.github.lwlee2608.proto.annotation.ProtoMessage;
 
+import java.util.Map;
+
 @ProtoMessage(protoName = "example", protoPackage = "testing.example")
 public class AllTypePojo {
     @ProtoField(tag = 1) private String stringField;
@@ -15,4 +17,5 @@ public class AllTypePojo {
     @ProtoField(tag = 8) private Byte[] bytesField;
     @ProtoField(tag = 9) private NestedPojo nestedField;
     @ProtoField(tag = 10) private ResultCode resultCode;
+    @ProtoField(tag = 20) private Map<String, String> metadata;
 }
