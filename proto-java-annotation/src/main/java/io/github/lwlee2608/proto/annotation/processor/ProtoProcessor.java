@@ -130,23 +130,41 @@ public class ProtoProcessor extends AbstractProcessor {
                     boolean isList = false;
                     try {
                         protoType = toProtoType(javaType);
-                    } catch (UnsupportedTypeException e) {
+                    } catch (UnsupportedTypeException e1) {
                         Enumerated enumerated = enums.get(javaType);
-                        if (enumerated != null) {
+                        if (javaType.startsWith("java.util.List")) {
+                            String subJavaType = javaType.substring(javaType.indexOf("<") + 1, javaType.indexOf(">"));
+                            isList = true;
+
+                            // Get List type
+                            try {
+                                protoType = toProtoType(subJavaType);
+                            } catch (UnsupportedTypeException e2) {
+                                if (enumerated != null) {
+                                    protoType = getSimpleClass(subJavaType) + "Enum";
+                                    isEnum = true;
+                                } else {
+                                    Message message = messages.get(subJavaType);
+                                    if (message == null) {
+                                        // Throw error, field is neither Enum or Struct.
+                                        throw e2;
+                                    }
+                                    protoType = getSimpleClass(subJavaType);
+                                    isStruct = true;
+                                }
+                            }
+
+                        } else if (enumerated != null) {
                             // Check if field is Enum
                             protoType = getSimpleClass(javaType) + "Enum";
                             isEnum = true;
 
-                        } else if (javaType.startsWith("java.util.List")) {
-                            String subJavaType = javaType.substring(javaType.indexOf("<")+1, javaType.indexOf(">"));
-                            protoType = toProtoType(subJavaType);
-                            isList = true;
                         } else {
                             // Check if field is Struct
                             Message message = messages.get(javaType);
                             if (message == null) {
                                 // Throw error, field is neither Enum or Struct.
-                                throw e;
+                                throw e1;
                             }
                             protoType = getSimpleClass(javaType);
                             isStruct = true;
