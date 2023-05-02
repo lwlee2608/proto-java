@@ -25,4 +25,5 @@ public class AllTypePayload {
     @ProtoField(tag = 12) private List<String> arrayStringField;
     @ProtoField(tag = 13) private List<SimplePayload> arrayPayloadField;
     @ProtoField(tag = 20) private Map<String, String> metadata;
+    @ProtoField(tag = 21) private Map<String, Integer> integerMapField;
 }

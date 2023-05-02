@@ -150,8 +150,9 @@ public class ProtoGenImpl implements ProtoGen {
                                 out.println("            }");
                             }
                         } else if (field.getIsMap()) {
+                            String putAllFunction = getPutAllMapFunction(field.getName());
                             out.println("            if (pojo." + getter + "() != null) {");
-                            out.println("                builder.putAllMetadata(pojo." + getter + "());");
+                            out.println("                builder." + putAllFunction + "(pojo." + getter + "());");
                             out.println("            }");
                         } else {
                             if (field.getIsStruct()) {
@@ -347,6 +348,11 @@ public class ProtoGenImpl implements ProtoGen {
     private String getHasFunction(String fieldName) {
         String name = fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
         return "has" + name;
+    }
+
+    private String getPutAllMapFunction(String fieldName) {
+        String name = fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+        return "putAll" + name;
     }
 
     private String getSimpleClass(String fullyQualifiedClassName) {

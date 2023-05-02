@@ -65,6 +65,7 @@ class GreeterTest {
                                                 .setStringField("foo")
                                                 .setIntegerField(200)))
                                         .setMetadata(Map.of("key1", "value1", "key2", "value2"))
+                                        .setIntegerMapField(Map.of("key1", 1000, "key2", 1001))
                                 )
                         );
                     }
@@ -96,6 +97,8 @@ class GreeterTest {
         Assertions.assertEquals(200, reply.getPayload().getArrayPayloadField().get(0).getIntegerField());
         Assertions.assertEquals("value1", reply.getPayload().getMetadata().get("key1"));
         Assertions.assertEquals("value2", reply.getPayload().getMetadata().get("key2"));
+        Assertions.assertEquals(1000, reply.getPayload().getIntegerMapField().get("key1"));
+        Assertions.assertEquals(1001, reply.getPayload().getIntegerMapField().get("key2"));
         server.shutdown();
     }
 }
