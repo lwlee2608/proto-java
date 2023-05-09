@@ -7,6 +7,7 @@ specification in a .proto file, we can now define it in Java using annotations.
 ### Modules
 * proto-java-annotation
 * proto-java-default-gen
+* proto-java-vertx-gen
 * proto-java-plugin
 
 
@@ -83,6 +84,61 @@ View the full example [here](https://github.com/lwlee2608/proto-java/blob/main/e
 |-------------------|:---------|--------------------|
 | StreamObserver    | io.grpc  | :heavy_check_mark: |
 | CompletableFuture | JDK      | :heavy_check_mark: |
+
+## proto-java-default-gen
+Same as proto-java-default-gen, but this module will also generate Vertx GRPC client and server codes. Compatible with Vertx 4.4 or newer.
+
+### How to apply
+Simply add the module as dependency
+```xml
+    <dependency>
+        <groupId>io.github.lwlee2608</groupId>
+        <artifactId>proto-java-vertx-gen</artifactId>
+        <version>VERSION</version>
+    </dependency>
+```
+Make sure vertx dependencies are added.
+```xml
+    <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-grpc-client</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-grpc-server</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-rx-java2</artifactId>
+    </dependency>
+```
+
+### Example Server
+```java
+    int serverPort = ...;
+    
+    HelloworldVertxGrpcServer grpcServer = new HelloworldVertxGrpcServer(vertx);
+    grpcServer.callHandlers(new HelloworldVertxGrpcServer.GreeterApi() {
+        @Override
+        public Single<HelloReply> sayHello(HelloRequest request) {
+            return Single.just(new HelloReply().setName(request.getMessage() + " World"));
+        }
+    });
+    
+    vertx.createHttpServer()
+           .requestHandler(grpcServer.getGrpcServer())
+           .listen(serverPort);
+```
+
+### Example Client
+```java
+    SocketAddress socketAddress = SocketAddress.inetSocketAddress(serverPort, "localhost");
+    HelloworldVertxGrpcClient client = new HelloworldVertxGrpcClient(vertx, socketAddress);
+
+    client.sayHello(new HelloRequest().setMessage("Hello").setId(1))
+        .subscribe();
+```
+
 
 ## proto-java-plugin 
 If protoc binary is not available in `$PATH`, use this maven-plugin to automatically download it
