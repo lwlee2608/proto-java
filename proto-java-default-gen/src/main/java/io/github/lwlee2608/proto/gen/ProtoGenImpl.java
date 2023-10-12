@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.PrintWriter;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Objects;
 
 public class ProtoGenImpl implements ProtoGen {
     private final CommandLineUtils.StringStreamConsumer error = new CommandLineUtils.StringStreamConsumer();
@@ -50,7 +51,17 @@ public class ProtoGenImpl implements ProtoGen {
         String outputDirectory = Paths.get(resource.toUri()).toFile().getParent();
 
         // Retrieve the protoc executable
-        String protocExecutable = outputDirectory.substring(0, outputDirectory.indexOf("target")) + "target/protoc/bin/" + "protoc.exe";
+        // Index of build output (Maven & Gradle)
+        // For Maven
+        int index = outputDirectory.lastIndexOf("target");
+        String protocExecutable;
+        // If Index == -1 try for Gradle;
+        if (index < 0) {
+            index = outputDirectory.lastIndexOf("build");
+            protocExecutable = outputDirectory.substring(0, index) + "build/protoc/bin/" + "protoc.exe";
+        }else {
+            protocExecutable = outputDirectory.substring(0, index) + "target/protoc/bin/" + "protoc.exe";
+        }
         File protocExeFile = new File(protocExecutable);
         String executable = protocExeFile.exists() ? protocExecutable : "protoc";
 
