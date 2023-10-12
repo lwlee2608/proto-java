@@ -53,20 +53,17 @@ public class ProtoGenImpl implements ProtoGen {
         // Retrieve the protoc executable
         // Index of build output (Maven & Gradle)
         // For Maven
-        int index = outputDirectory.indexOf("target");
+        int index = outputDirectory.lastIndexOf("target");
+        String protocExecutable;
         // If Index == -1 try for Gradle;
         if (index < 0) {
-            index = outputDirectory.indexOf("build");
+            index = outputDirectory.lastIndexOf("build");
+            protocExecutable = outputDirectory.substring(0, index) + "build/protoc/bin/" + "protoc.exe";
+        }else {
+            protocExecutable = outputDirectory.substring(0, index) + "target/protoc/bin/" + "protoc.exe";
         }
-
-        String executable;
-        // If still not found then fallback to use "protoc"
-        if (index < 0) {
-            executable = "protoc";
-        } else {
-            String protocExeFile = findProtoc(new File(outputDirectory.substring(0, index)));
-            executable = protocExeFile != null ? protocExeFile : "protoc";
-        }
+        File protocExeFile = new File(protocExecutable);
+        String executable = protocExeFile.exists() ? protocExecutable : "protoc";
 
         // Generate using protoc
         String protoPath = protoFiles.get(0).getGeneratedFile().getParent();
@@ -83,18 +80,6 @@ public class ProtoGenImpl implements ProtoGen {
         if (ret != 0) {
             throw new GeneratorException("Protoc error: " + error.getOutput());
         }
-    }
-
-    private String findProtoc(File startDirectory) {
-        for (File file : Objects.requireNonNull(startDirectory.listFiles())) {
-            if (file.isDirectory()) {
-                String pathInDir = findProtoc(file);
-                if (pathInDir != null) return pathInDir;
-            } else if ("protoc.exe".equals(file.getName())) {
-                return file.getAbsolutePath();
-            }
-        }
-        return null;  // Return null if not found
     }
 
     @SneakyThrows
