@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -56,7 +58,15 @@ class GreeterTest {
                                         .setBooleanField(true)
                                         .setDoubleField(3.1)
                                         .setFloatField(4.2f)
-                                        .setResultCode(ResultCode.SUCCESS))
+                                        .setResultCode(ResultCode.SUCCESS)
+                                        .setArrayIntField(List.of(101, 102))
+                                        .setArrayStringField(List.of("Aa1", "Bb2"))
+                                        .setArrayPayloadField(List.of(new SimplePayload()
+                                                .setStringField("foo")
+                                                .setIntegerField(200)))
+                                        .setMetadata(Map.of("key1", "value1", "key2", "value2"))
+                                        .setIntegerMapField(Map.of("key1", 1000, "key2", 1001))
+                                )
                         );
                     }
                 }))
@@ -81,6 +91,14 @@ class GreeterTest {
         Assertions.assertEquals(3.1, reply.getPayload().getDoubleField());
         Assertions.assertEquals(4.2f, reply.getPayload().getFloatField());
         Assertions.assertEquals(ResultCode.SUCCESS, reply.getPayload().getResultCode());
+        Assertions.assertArrayEquals(new Integer[]{101, 102}, reply.getPayload().getArrayIntField().toArray(new Integer[0]));
+        Assertions.assertArrayEquals(new String[]{"Aa1", "Bb2"}, reply.getPayload().getArrayStringField().toArray(new String[0]));
+        Assertions.assertEquals("foo", reply.getPayload().getArrayPayloadField().get(0).getStringField());
+        Assertions.assertEquals(200, reply.getPayload().getArrayPayloadField().get(0).getIntegerField());
+        Assertions.assertEquals("value1", reply.getPayload().getMetadata().get("key1"));
+        Assertions.assertEquals("value2", reply.getPayload().getMetadata().get("key2"));
+        Assertions.assertEquals(1000, reply.getPayload().getIntegerMapField().get("key1"));
+        Assertions.assertEquals(1001, reply.getPayload().getIntegerMapField().get("key2"));
         server.shutdown();
     }
 }

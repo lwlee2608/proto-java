@@ -127,11 +127,45 @@ public class ProtoProcessor extends AbstractProcessor {
                     String protoType;
                     boolean isStruct = false;
                     boolean isEnum = false;
+                    boolean isList = false;
+                    boolean isMap = false;
                     try {
                         protoType = toProtoType(javaType);
-                    } catch (UnsupportedTypeException e) {
+                    } catch (UnsupportedTypeException e1) {
                         Enumerated enumerated = enums.get(javaType);
-                        if (enumerated != null) {
+                        if (javaType.startsWith("java.util.List")) {
+                            String subJavaType = extractTemplate(javaType, "java.util.List<(.*?)>");
+                            isList = true;
+
+                            // Get List type
+                            try {
+                                protoType = toProtoType(subJavaType);
+                            } catch (UnsupportedTypeException e2) {
+                                if (enumerated != null) {
+                                    protoType = getSimpleClass(subJavaType) + "Enum";
+                                    isEnum = true;
+                                } else {
+                                    Message message = messages.get(subJavaType);
+                                    if (message == null) {
+                                        // Throw error, field is neither Enum or Struct.
+                                        throw e2;
+                                    }
+                                    protoType = getSimpleClass(subJavaType);
+                                    isStruct = true;
+                                }
+                            }
+                        } else if (javaType.startsWith("java.util.Map")) {
+                            String str = extractTemplate(javaType, "java.util.Map<(.*?)>");
+                            assert str != null;
+                            String[] split = str.split(",");
+                            if (!"java.lang.String".equals(split[0])) {
+                                throw new RuntimeException("Invalid parameters. Only string is supported as map's key");
+                            }
+                            // TODO support enum & nested field
+                            protoType = toProtoTypeNoConvert(split[1]);
+                            isMap = true;
+
+                        } else if (enumerated != null) {
                             // Check if field is Enum
                             protoType = getSimpleClass(javaType) + "Enum";
                             isEnum = true;
@@ -141,7 +175,7 @@ public class ProtoProcessor extends AbstractProcessor {
                             Message message = messages.get(javaType);
                             if (message == null) {
                                 // Throw error, field is neither Enum or Struct.
-                                throw e;
+                                throw e1;
                             }
                             protoType = getSimpleClass(javaType);
                             isStruct = true;
@@ -155,6 +189,8 @@ public class ProtoProcessor extends AbstractProcessor {
                             .setProtoType(protoType)
                             .setIsStruct(isStruct)
                             .setIsEnum(isEnum)
+                            .setIsList(isList)
+                            .setIsMap(isMap)
                             .setTag(tag));
 
                     // System.out.println("Field is " + fieldName);
@@ -287,7 +323,13 @@ public class ProtoProcessor extends AbstractProcessor {
                 String className = message.getClassName();
                 out.println("message " + className + " {");
                 for (Field field : message.getFields()) {
-                    out.println(String.format("    %s %s = %d;", field.getProtoType(), field.getName(), field.getTag()));
+                    if (field.getIsList()) {
+                        out.println(String.format("    repeated %s %s = %d;", field.getProtoType(), field.getName(), field.getTag()));
+                    } else if (field.getIsMap()) {
+                        out.println(String.format("    map<string, %s> %s = %d;", field.getProtoType(), field.getName(), field.getTag()));
+                    } else {
+                        out.println(String.format("    %s %s = %d;", field.getProtoType(), field.getName(), field.getTag()));
+                    }
                 }
                 out.println("}");
                 out.println("");
@@ -355,6 +397,20 @@ public class ProtoProcessor extends AbstractProcessor {
             case "java.lang.Double": return "google.protobuf.DoubleValue";
             case "java.lang.Boolean": return "google.protobuf.BoolValue";
             case "java.lang.Byte[]": return "google.protobuf.BytesValue";
+            default: throw new UnsupportedTypeException("Java type " + javaType + " not supported");
+        }
+    }
+
+    private String toProtoTypeNoConvert(String javaType) {
+        switch (javaType) {
+            case "java.lang.String": return "string";
+            case "java.lang.Short":
+            case "java.lang.Integer": return "int32";
+            case "java.lang.Long": return "int64";
+            case "java.lang.Float": return "float";
+            case "java.lang.Double": return "double";
+            case "java.lang.Boolean": return "bool";
+            case "java.lang.Byte[]": return "bytes";
             default: throw new UnsupportedTypeException("Java type " + javaType + " not supported");
         }
     }

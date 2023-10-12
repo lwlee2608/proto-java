@@ -84,6 +84,7 @@ public class ProtoGenImpl implements ProtoGen {
                 out.println("");
                 out.println("import com.google.protobuf.*;");
                 out.println("import java.util.concurrent.CompletableFuture;");
+                out.println("import java.util.stream.Collectors;");
                 out.println("import io.github.lwlee2608.proto.gen.util.CompletableFutureUtil;");
                 out.println("import io.github.lwlee2608.proto.gen.util.StreamObserverUtil;");
                 out.println("import io.grpc.CallOptions;");
@@ -134,21 +135,42 @@ public class ProtoGenImpl implements ProtoGen {
                     for (Field field : message.getFields()) {
                         String setter = getSetter(field.getName());
                         String getter = getGetter(field.getName());
-                        if (field.getIsStruct()) {
-                            String messageType = getSimpleClass(field.getJavaType()) + "Message";
-                            out.println("            if (pojo." + getter +"() != null) {");
-                            out.println("                builder." + setter + "(" + messageType + ".toProto(pojo." + getter + "()));");
-                            out.println("            }");
-                        } else if (field.getIsEnum()) {
-                            String enumType = field.getProtoType();
+                        if (field.getIsList()) {
+                            String addOperation = getListAdd(field.getName());
+                            if (field.getIsStruct()) {
+                                String messageType = field.getProtoType() + "Message";
+                                String wrapperFunction = messageType + ".toProto";
+                                out.println("            if (pojo." + getter + "() != null) {");
+                                out.println("                pojo." + getter + "().forEach(x -> builder." + addOperation + "(" + wrapperFunction + "(x)));");
+                                out.println("            }");
+                            } else {
+                                String wrapperFunction = getSimpleClass(field.getProtoType()) + ".of";
+                                out.println("            if (pojo." + getter + "() != null) {");
+                                out.println("                pojo." + getter + "().forEach(x -> builder." + addOperation + "(" + wrapperFunction + "(x)));");
+                                out.println("            }");
+                            }
+                        } else if (field.getIsMap()) {
+                            String putAllFunction = getPutAllMapFunction(field.getName());
                             out.println("            if (pojo." + getter + "() != null) {");
-                            out.println("                builder." + setter + "(" + enumType + ".toProto(pojo." + getter + "()));");
+                            out.println("                builder." + putAllFunction + "(pojo." + getter + "());");
                             out.println("            }");
                         } else {
-                            String wrapperFunction = getSimpleClass(field.getProtoType()) + ".of";
-                            out.println("            if (pojo." + getter +"() != null) {");
-                            out.println("                builder." + setter + "(" + wrapperFunction + "(pojo." + getter + "()));");
-                            out.println("            }");
+                            if (field.getIsStruct()) {
+                                String messageType = getSimpleClass(field.getJavaType()) + "Message";
+                                out.println("            if (pojo." + getter +"() != null) {");
+                                out.println("                builder." + setter + "(" + messageType + ".toProto(pojo." + getter + "()));");
+                                out.println("            }");
+                            } else if (field.getIsEnum()) {
+                                String enumType = field.getProtoType();
+                                out.println("            if (pojo." + getter + "() != null) {");
+                                out.println("                builder." + setter + "(" + enumType + ".toProto(pojo." + getter + "()));");
+                                out.println("            }");
+                            } else {
+                                String wrapperFunction = getSimpleClass(field.getProtoType()) + ".of";
+                                out.println("            if (pojo." + getter +"() != null) {");
+                                out.println("                builder." + setter + "(" + wrapperFunction + "(pojo." + getter + "()));");
+                                out.println("            }");
+                            }
                         }
                     }
                     out.println("            return builder.build();");
@@ -160,20 +182,37 @@ public class ProtoGenImpl implements ProtoGen {
                         String setter = getSetter(field.getName());
                         String getter = getGetter(field.getName());
                         String hasFunction = getHasFunction(field.getName());
-                        if (field.getIsStruct()) {
-                            String messageType = getSimpleClass(field.getJavaType()) + "Message";
-                            out.println("            if (proto." + hasFunction +"()) {");
-                            out.println("                pojo." + setter + "(" + messageType + ".fromProto(proto." + getter + "()));");
-                            out.println("            }");
-                        } else if (field.getIsEnum()) {
-                            String enumType = field.getProtoType();
-                            out.println("            if (proto." + hasFunction +"()) {");
-                            out.println("                pojo." + setter + "(" + enumType + ".fromProto(proto." + getter + "()));");
+                        if (field.getIsList()) {
+                            if (field.getIsStruct()) {
+                                String messageType = field.getProtoType() + "Message";
+                                out.println("            if (!proto." + getter +"List().isEmpty()) {");
+                                out.println("                pojo." + setter + "(proto." + getter + "List().stream().map(x -> " + messageType + ".fromProto(x)).collect(Collectors.toList()));");
+                                out.println("            }");
+                            } else {
+                                out.println("            if (!proto." + getter +"List().isEmpty()) {");
+                                out.println("                pojo." + setter + "(proto." + getter + "List().stream().map(x -> x.getValue()).collect(Collectors.toList()));");
+                                out.println("            }");
+                            }
+                        } else if (field.getIsMap()) {
+                            out.println("            if (!proto." + getter +"().isEmpty()) {");
+                            out.println("                pojo." + setter + "(proto." + getter + "());");
                             out.println("            }");
                         } else {
-                            out.println("            if (proto." + hasFunction +"()) {");
-                            out.println("                pojo." + setter + "(proto." + getter + "().getValue());");
-                            out.println("            }");
+                            if (field.getIsStruct()) {
+                                String messageType = getSimpleClass(field.getJavaType()) + "Message";
+                                out.println("            if (proto." + hasFunction + "()) {");
+                                out.println("                pojo." + setter + "(" + messageType + ".fromProto(proto." + getter + "()));");
+                                out.println("            }");
+                            } else if (field.getIsEnum()) {
+                                String enumType = field.getProtoType();
+                                out.println("            if (proto." + hasFunction + "()) {");
+                                out.println("                pojo." + setter + "(" + enumType + ".fromProto(proto." + getter + "()));");
+                                out.println("            }");
+                            } else {
+                                out.println("            if (proto." + hasFunction + "()) {");
+                                out.println("                pojo." + setter + "(proto." + getter + "().getValue());");
+                                out.println("            }");
+                            }
                         }
                     }
                     out.println("            return pojo;");
@@ -296,6 +335,11 @@ public class ProtoGenImpl implements ProtoGen {
         return "set" + name;
     }
 
+    private String getListAdd(String fieldName) {
+        String name = fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+        return "add" + name;
+    }
+
     private String getGetter(String fieldName) {
         String name = fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
         return "get" + name;
@@ -304,6 +348,11 @@ public class ProtoGenImpl implements ProtoGen {
     private String getHasFunction(String fieldName) {
         String name = fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
         return "has" + name;
+    }
+
+    private String getPutAllMapFunction(String fieldName) {
+        String name = fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+        return "putAll" + name;
     }
 
     private String getSimpleClass(String fullyQualifiedClassName) {

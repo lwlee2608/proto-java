@@ -7,12 +7,17 @@
         <version>1.1.2-SNAPSHOT</version>
     </parent>
 
-    <artifactId>proto-java-default-gen</artifactId>
+    <artifactId>proto-java-vertx-gen</artifactId>
 
     <dependencies>
         <dependency>
             <groupId>io.github.lwlee2608</groupId>
             <artifactId>proto-java-annotation</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.lwlee2608</groupId>
+            <artifactId>proto-java-default-gen</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

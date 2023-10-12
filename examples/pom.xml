@@ -5,7 +5,7 @@
     <parent>
         <groupId>io.github.lwlee2608</groupId>
         <artifactId>proto-java-parent</artifactId>
-        <version>1.1.0-SNAPSHOT</version>
+        <version>1.1.2-SNAPSHOT</version>
     </parent>
 
     <artifactId>examples</artifactId>
@@ -79,6 +79,16 @@
                 <configuration>
                     <skip>true</skip>
                 </configuration>
+            </plugin>
+            <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <configuration>
+                <outputDirectory>docs</outputDirectory>
+                <sourceFileIncludes>
+                    <sourceFileInclude>**/*.java</sourceFileInclude>
+                </sourceFileIncludes>
+            </configuration>
             </plugin>
         </plugins>
     </build>

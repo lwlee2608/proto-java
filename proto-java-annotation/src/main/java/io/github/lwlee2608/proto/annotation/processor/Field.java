@@ -12,5 +12,6 @@ public class Field {
     private Integer tag;
     private Boolean isStruct;
     private Boolean isEnum;
-    // private Boolean isList; // TODO
+    private Boolean isList;
+    private Boolean isMap;
 }
